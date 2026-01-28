@@ -50,10 +50,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex justify-between items-center py-4">
             <div className="flex items-center gap-8">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center border border-white/30">
-                  <span className="text-white font-bold text-lg">ML</span>
-                </div>
+              <div className="flex items-center gap-3">
+                <img src="/exl-logo.png" alt="EXL Logo" className="h-12 w-auto" />
                 <h1 className="text-2xl font-black text-white">MLOps Studio</h1>
               </div>
               
@@ -95,9 +93,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* Mobile Navigation */}
           <div className="md:hidden flex justify-between items-center py-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white/20 rounded flex items-center justify-center border border-white/30">
-                <span className="text-white font-bold text-sm">ML</span>
-              </div>
+              <img src="/exl-logo.png" alt="EXL Logo" className="h-8 w-auto" />
               <h1 className="text-lg font-black text-white">MLOps</h1>
             </div>
             <button
