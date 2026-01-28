@@ -22,10 +22,15 @@ export default function Projects() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ 
+  const [formData, setFormData] = useState<{ 
+    name: string; 
+    description: string; 
+    environment: 'dev' | 'staging' | 'prod'; 
+    githubRepo: string;
+  }>({ 
     name: '', 
     description: '', 
-    environment: 'dev' as const, 
+    environment: 'dev', 
     githubRepo: '' 
   });
   const { showNotification } = useNotification();
@@ -60,7 +65,7 @@ export default function Projects() {
       await APIClient.apiPost('/projects', formData);
       showNotification('Project created successfully', 'success');
       setShowModal(false);
-      setFormData({ name: '', description: '', environment: 'dev', githubRepo: '' });
+      setFormData({ name: '', description: '', environment: 'dev' as const, githubRepo: '' });
       await loadProjects();
     } catch (err) {
       console.warn('Failed to create project:', err);
@@ -72,7 +77,7 @@ export default function Projects() {
       };
       setProjects([...projects, newProject]);
       setShowModal(false);
-      setFormData({ name: '', description: '', environment: 'dev', githubRepo: '' });
+      setFormData({ name: '', description: '', environment: 'dev' as const, githubRepo: '' });
       showNotification('Project created locally', 'info');
     }
   };
@@ -88,7 +93,7 @@ export default function Projects() {
       showNotification('Project updated successfully', 'success');
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: '', description: '', environment: 'dev', githubRepo: '' });
+      setFormData({ name: '', description: '', environment: 'dev' as const, githubRepo: '' });
       await loadProjects();
     } catch (err) {
       console.warn('Failed to update project:', err);
@@ -96,7 +101,7 @@ export default function Projects() {
       setProjects(projects.map(p => p.id === editingId ? { ...p, ...formData } : p));
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: '', description: '', environment: 'dev', githubRepo: '' });
+      setFormData({ name: '', description: '', environment: 'dev' as const, githubRepo: '' });
       showNotification('Project updated locally', 'info');
     }
   };
@@ -121,7 +126,7 @@ export default function Projects() {
     setFormData({
       name: project.name,
       description: project.description || '',
-      environment: (project.environment || 'dev') as 'dev' | 'staging' | 'prod',
+      environment: project.environment,
       githubRepo: project.githubRepo || ''
     });
     setShowModal(true);
@@ -130,7 +135,7 @@ export default function Projects() {
   const closeModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({ name: '', description: '', environment: 'dev', githubRepo: '' });
+    setFormData({ name: '', description: '', environment: 'dev' as const, githubRepo: '' });
   };
 
   const getEnvColor = (env: string) => {

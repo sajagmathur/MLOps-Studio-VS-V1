@@ -68,7 +68,7 @@ const Integrations: React.FC = () => {
               <div>
                 <p className="text-xs text-gray-400 mb-2">Connected Repositories:</p>
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {integration.repos.map((repo) => (
+                  {(integration.repos || []).map((repo) => (
                     <span key={repo} className="px-3 py-1 bg-gray-700 rounded-full text-xs">
                       {repo}
                     </span>
@@ -92,7 +92,7 @@ const Integrations: React.FC = () => {
               <div>
                 <p className="text-xs text-gray-400 mb-2">Region: {integration.region}</p>
                 <div className="flex flex-wrap gap-2">
-                  {integration.services.map((service) => (
+                  {(integration.services || []).map((service) => (
                     <span key={service} className="px-3 py-1 bg-blue-600/20 border border-blue-500 rounded text-xs">
                       {service}
                     </span>
