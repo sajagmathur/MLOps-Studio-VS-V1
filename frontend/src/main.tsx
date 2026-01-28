@@ -1,10 +1,24 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import AppWrapper from './App';
+import AppRouter from './AppRouter';
 import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+console.log('🚀 MLOps Studio Frontend Starting...');
+console.log('📍 Root element:', document.getElementById('root'));
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  console.error('❌ Root element not found!');
+  throw new Error('Root element #root not found in HTML');
+}
+
+console.log('✅ Root element found, rendering app...');
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <AppWrapper />
+    <AppRouter />
   </React.StrictMode>,
 );
+
+console.log('✅ App rendered successfully');
+
