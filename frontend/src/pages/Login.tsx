@@ -55,7 +55,7 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@mlops.com"
+              placeholder="your@email.com"
               className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none transition-all"
               disabled={isLoading}
             />
@@ -82,10 +82,8 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-          <p className="text-blue-300 text-sm mb-2 font-semibold">Demo Credentials:</p>
-          <p className="text-blue-200 text-xs">Email: admin@mlops.com</p>
-          <p className="text-blue-200 text-xs">Password: password</p>
+        <div className="mt-6 p-4 rounded-lg bg-slate-500/10 border border-slate-500/20">
+          <p className="text-slate-300 text-sm font-semibold">Sign in with your organization credentials</p>
         </div>
       </div>
     </div>

@@ -145,8 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(response.error || 'Login failed');
         }
       } catch (backendErr: any) {
-        // If backend is down and not demo credentials, fail
-        throw new Error('Backend unavailable. Use demo credentials: admin@mlops.com / password');
+        throw new Error('Invalid credentials or backend unavailable');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
