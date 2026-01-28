@@ -1,4 +1,5 @@
 import React from 'react';
+import logoImage from '../../public/logo.png';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -13,7 +14,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md' }) => {
 
   return (
     <img 
-      src="/logo.png" 
+      src={logoImage} 
       alt="Logo" 
       className={`${sizes[size]} object-contain rounded-lg shadow-lg`}
     />
