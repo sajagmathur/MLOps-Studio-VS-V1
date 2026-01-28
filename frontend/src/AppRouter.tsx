@@ -228,10 +228,19 @@ const AppRoutes: React.FC = () => {
 export default function AppRouter() {
   console.log('🚀 AppRouter rendering - initializing full app with providers');
   
+  // Get basename for GitHub Pages - if deployed to subdirectory
+  const basename = import.meta.env.MODE === 'production' 
+    ? window.location.pathname.split('/').length > 2 
+      ? '/' + window.location.pathname.split('/')[1]
+      : '/'
+    : '/';
+  
+  console.log('📍 Using basename:', basename);
+  
   try {
     return (
       <ErrorBoundary>
-        <Router>
+        <Router basename={basename}>
           <AuthProvider>
             <NotificationProvider>
               <AppRoutes />
