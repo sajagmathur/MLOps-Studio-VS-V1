@@ -78,6 +78,69 @@ const Admin: React.FC = () => {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Administration</h1>
 
+      {/* Demo Credentials */}
+      <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-lg p-6 border border-blue-500/50">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Shield size={20} className="text-blue-400" />
+          Demo Credentials by Account Type
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gray-800/50 rounded p-4 border border-gray-700">
+            <p className="text-sm font-medium text-blue-300 mb-2">Admin User</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-gray-400">Email:</span> <span className="text-gray-100 font-mono">admin@mlops.com</span></p>
+              <p><span className="text-gray-400">Password:</span> <span className="text-gray-100 font-mono">password</span></p>
+              <p><span className="text-gray-400">Role:</span> <span className="text-pink-400">Administrator</span></p>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded p-4 border border-gray-700">
+            <p className="text-sm font-medium text-blue-300 mb-2">ML Engineer</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-gray-400">Email:</span> <span className="text-gray-100 font-mono">alice@org.com</span></p>
+              <p><span className="text-gray-400">Password:</span> <span className="text-gray-100 font-mono">password</span></p>
+              <p><span className="text-gray-400">Role:</span> <span className="text-blue-400">ML Engineer</span></p>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded p-4 border border-gray-700">
+            <p className="text-sm font-medium text-blue-300 mb-2">Data Engineer</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-gray-400">Email:</span> <span className="text-gray-100 font-mono">bob@org.com</span></p>
+              <p><span className="text-gray-400">Password:</span> <span className="text-gray-100 font-mono">password</span></p>
+              <p><span className="text-gray-400">Role:</span> <span className="text-green-400">Data Engineer</span></p>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded p-4 border border-gray-700">
+            <p className="text-sm font-medium text-blue-300 mb-2">Model Sponsor</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-gray-400">Email:</span> <span className="text-gray-100 font-mono">carol@org.com</span></p>
+              <p><span className="text-gray-400">Password:</span> <span className="text-gray-100 font-mono">password</span></p>
+              <p><span className="text-gray-400">Role:</span> <span className="text-purple-400">Model Sponsor</span></p>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded p-4 border border-gray-700">
+            <p className="text-sm font-medium text-blue-300 mb-2">Data Scientist</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-gray-400">Email:</span> <span className="text-gray-100 font-mono">david@org.com</span></p>
+              <p><span className="text-gray-400">Password:</span> <span className="text-gray-100 font-mono">password</span></p>
+              <p><span className="text-gray-400">Role:</span> <span className="text-indigo-400">Data Scientist</span></p>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded p-4 border border-gray-700">
+            <p className="text-sm font-medium text-blue-300 mb-2">Production Team</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-gray-400">Email:</span> <span className="text-gray-100 font-mono">prod@org.com</span></p>
+              <p><span className="text-gray-400">Password:</span> <span className="text-gray-100 font-mono">password</span></p>
+              <p><span className="text-gray-400">Role:</span> <span className="text-red-400">Production Team</span></p>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-4">💡 Tip: Use any of these credentials to test different user roles and their permissions</p>
+      </div>
       {/* User Management */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <div className="flex items-center justify-between mb-4">
