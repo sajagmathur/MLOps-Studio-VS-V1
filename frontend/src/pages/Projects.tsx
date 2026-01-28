@@ -121,7 +121,7 @@ export default function Projects() {
     setFormData({
       name: project.name,
       description: project.description || '',
-      environment: project.environment,
+      environment: (project.environment || 'dev') as 'dev' | 'staging' | 'prod',
       githubRepo: project.githubRepo || ''
     });
     setShowModal(true);

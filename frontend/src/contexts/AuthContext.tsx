@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Try to authenticate with backend
       try {
-        const response = await authAPI.login(email, password);
+        const response = await authAPI.login(email, password) as any;
         
         if (response.token && response.user) {
           localStorage.setItem('token', response.token);
@@ -167,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setIsLoading(true);
-      const response = await authAPI.register(data);
+      const response = await authAPI.register(data) as any;
       
       if (response.token && response.user) {
         localStorage.setItem('token', response.token);
