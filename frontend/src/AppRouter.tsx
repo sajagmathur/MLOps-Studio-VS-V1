@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationContainer } from './components/NotificationContainer';
-import EXLLogo from './components/EXLLogo';
+import Logo from './components/Logo';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
@@ -52,7 +52,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="hidden md:flex justify-between items-center py-4">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-2">
-                <EXLLogo size="md" />
+                <Logo size="md" />
                 <h1 className="text-2xl font-black text-white">MLOps Studio</h1>
               </div>
               
@@ -94,9 +94,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* Mobile Navigation */}
           <div className="md:hidden flex justify-between items-center py-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white/20 rounded flex items-center justify-center border border-white/30">
-                <span className="text-white font-bold text-sm">ML</span>
-              <EXLLogo size="sm" /
+              <Logo size="sm" />
+            </div>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-white hover:bg-white/10 rounded-lg transition-all"

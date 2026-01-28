@@ -2,7 +2,7 @@
 
 ## Executive Summary (UPDATED)
 
-The **frontend is now 85% COMPLETE and FULLY FUNCTIONAL**! The major infrastructure is in place with working routing, authentication, API integration layer, and all 8 page components operational. The system now has a professional, production-ready frontend with EXL branding and full navigation.
+The **frontend is now 85% COMPLETE and FULLY FUNCTIONAL**! The major infrastructure is in place with working routing, authentication, API integration layer, and all 8 page components operational. The system now has a professional, production-ready frontend with full navigation and branding.
 
 ---
 
@@ -490,7 +490,7 @@ npm install html2pdf.js
 ```
 frontend/
 ├── public/
-│   └── exl-logo.png           (optional branding logo)
+│   └── Logo.tsx               (branding logo component)
 ├── src/
 │   ├── AppRouter.tsx          ✅ Main router (React Router v6)
 │   ├── App.tsx                ✅ Original 10-step workflow
