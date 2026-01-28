@@ -4,7 +4,7 @@
 
 ## 📍 Location
 ```
-c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio
+c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1
 ```
 
 ## ⚡ Quick Start (2 Options)
@@ -12,7 +12,7 @@ c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software
 ### Option 1: Local Development (30 seconds)
 ```powershell
 # Open PowerShell and navigate to the project
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 
 # Run automated setup
 bash scripts/setup-dev.sh

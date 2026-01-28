@@ -472,7 +472,7 @@ integrations/
 
 **Project Location:**
 ```
-c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio
+c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1
 ```
 
 **Start With:** [START_HERE.md](START_HERE.md)

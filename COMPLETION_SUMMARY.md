@@ -4,7 +4,7 @@
 
 **Location:**
 ```
-c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio
+c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1
 ```
 
 **Status:** ✅ Complete  
@@ -249,7 +249,7 @@ mlops-studio/
 
 ```bash
 # Navigate to project
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 
 # Automated setup (30 seconds)
 bash scripts/setup-dev.sh

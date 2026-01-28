@@ -44,7 +44,7 @@ This is the **recommended** way to run the entire MLOps Studio stack.
 
 ### Step 1: Navigate to project
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 ```
 
 ### Step 2: Start all services with Docker Compose
@@ -90,7 +90,7 @@ If you prefer running locally without Docker:
 
 ### Terminal 1: Backend API
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio\backend"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1\backend"
 npm install
 npm run dev
 ```
@@ -102,7 +102,7 @@ Expected output:
 
 ### Terminal 2: Frontend
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio\frontend"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1\frontend"
 npm install
 npm run dev
 ```

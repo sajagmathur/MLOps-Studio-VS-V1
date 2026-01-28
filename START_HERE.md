@@ -9,7 +9,7 @@ Your MLOps Studio prototype is **100% complete** and ready for deployment.
 ## 📍 PROJECT LOCATION
 
 ```
-c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio
+c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1
 ```
 
 ---
@@ -88,7 +88,7 @@ c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software
 
 ```bash
 # Navigate to the project
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 
 # Run setup (automated, ~30 seconds)
 bash scripts/setup-dev.sh
@@ -279,7 +279,7 @@ mlops-studio/
 
 ### Immediate (Today)
 1. ✅ Read [GETTING_STARTED.md](GETTING_STARTED.md) (~2 minutes)
-2. ✅ Run `bash scripts/setup-dev.sh` (~30 seconds)
+2. ✅ Run `docker-compose up -d` or `bash scripts/setup-dev.sh` (~30 seconds)
 3. ✅ Visit http://localhost:3000 in your browser
 
 ### Short-term (This Week)
@@ -417,10 +417,10 @@ Everything is complete and ready to use.
 
 ```bash
 # Step 1: Navigate to project
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 
 # Step 2: Run setup
-bash scripts/setup-dev.sh
+docker-compose up -d
 
 # Step 3: Visit http://localhost:3000
 ```

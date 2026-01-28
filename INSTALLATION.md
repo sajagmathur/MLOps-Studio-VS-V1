@@ -67,11 +67,8 @@ newgrp docker
 ### Step 2: Clone/Copy the Repository
 
 ```bash
-# Navigate to your workspace
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype"
-
-# The mlops-studio directory already exists
-cd mlops-studio
+# Navigate to the project
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 ```
 
 ### Step 3: Environment Configuration

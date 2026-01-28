@@ -4,7 +4,7 @@
 
 ### Step 1: Run Setup (Any Terminal)
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 .\setup-without-docker.ps1
 ```
 
@@ -23,7 +23,7 @@ You need **2 separate PowerShell terminals** open.
 **Start this FIRST**
 
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 node server.js
 ```
 
@@ -42,7 +42,7 @@ Expected output:
 **Start this SECOND (after Terminal 1 is ready)**
 
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 python -m http.server 3000
 ```
 
@@ -75,19 +75,19 @@ You should see the MLOps Studio dashboard with:
 
 ### One-time Setup
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 .\setup-without-docker.ps1
 ```
 
 ### Terminal 1 (Backend)
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 node server.js
 ```
 
 ### Terminal 2 (Frontend)
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 python -m http.server 3000
 ```
 
@@ -102,7 +102,7 @@ http://localhost:3000
 
 1. **Open PowerShell Terminal 1:**
    ```powershell
-   cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+   cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
    .\setup-without-docker.ps1
    ```
    Wait for it to complete.
@@ -115,7 +115,7 @@ http://localhost:3000
 
 3. **Open PowerShell Terminal 2 (new window/tab):**
    ```powershell
-   cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+   cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
    python -m http.server 3000
    ```
    Wait until you see `Serving HTTP on 0.0.0.0 port 3000`

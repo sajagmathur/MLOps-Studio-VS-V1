@@ -3,7 +3,7 @@
 ## 🎯 Project: MLOps Studio
 **Status**: COMPLETE & READY FOR DEPLOYMENT  
 **Date**: January 28, 2026  
-**Location**: `c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio`
+**Location**: `c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1`
 
 ---
 
@@ -250,7 +250,7 @@ docker --version
 
 ### Step 2: Navigate to Project
 ```powershell
-cd "c:\Users\sajag177350\OneDrive - EXLService.com (I) Pvt. Ltd\Desktop\GIT\Software Prototype\mlops-studio"
+cd "c:\Users\sajag\Desktop\GIT\ML_Ops_Studio\MLOps-Studio-VS-V1"
 ```
 
 ### Step 3: Start Docker Stack
