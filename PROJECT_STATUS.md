@@ -3,7 +3,7 @@
 ## 📦 Project Overview
 
 **MLOps Studio** is a production-grade, enterprise-ready MLOps platform designed for teams managing machine learning model lifecycles. It provides an integrated solution for model training, evaluation, deployment, and monitoring across multiple environments.
-Updaed
+
 **Key Characteristics:**
 - ✅ **Pipeline-First Architecture**: 8 canonical stages for all ML workflows
 - ✅ **AWS-Managed**: Leverages AWS services (ECS, RDS, S3, ECR, etc.)
