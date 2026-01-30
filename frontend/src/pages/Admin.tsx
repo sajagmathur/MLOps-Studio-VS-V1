@@ -1,8 +1,23 @@
 import React, { useState } from 'react';
-import { Edit2, Trash2, Plus, Shield } from 'lucide-react';
+import { Edit2, Trash2, Plus, Shield, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { useNotification } from '../hooks/useNotification';
+import { Breadcrumb, SearchBar, FilterChip } from '../components/UIPatterns';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: 'active' | 'pending' | 'inactive';
+  teams: string[];
+  createdAt?: string;
+}
 
 const Admin: React.FC = () => {
-  const [users, setUsers] = useState([
+  const { theme } = useTheme();
+  const { showNotification } = useNotification();
+  const [users, setUsers] = useState<User[]>([
     {
       id: '1',
       email: 'alice@org.com',
@@ -10,6 +25,7 @@ const Admin: React.FC = () => {
       role: 'ml-engineer',
       status: 'active',
       teams: ['Data', 'Models'],
+      createdAt: '2024-01-01',
     },
     {
       id: '2',
@@ -18,6 +34,7 @@ const Admin: React.FC = () => {
       role: 'data-engineer',
       status: 'active',
       teams: ['Data'],
+      createdAt: '2024-01-02',
     },
     {
       id: '3',
@@ -26,6 +43,7 @@ const Admin: React.FC = () => {
       role: 'model-sponsor',
       status: 'active',
       teams: ['Stakeholders'],
+      createdAt: '2024-01-03',
     },
     {
       id: '4',
@@ -34,6 +52,25 @@ const Admin: React.FC = () => {
       role: 'admin',
       status: 'active',
       teams: ['Admin'],
+      createdAt: '2024-01-04',
+    },
+    {
+      id: '5',
+      email: 'evan@org.com',
+      name: 'Evan Martinez',
+      role: 'ml-engineer',
+      status: 'pending',
+      teams: [],
+      createdAt: '2024-01-20',
+    },
+    {
+      id: '6',
+      email: 'fiona@org.com',
+      name: 'Fiona Chen',
+      role: 'data-scientist',
+      status: 'pending',
+      teams: [],
+      createdAt: '2024-01-21',
     },
   ]);
 
@@ -48,18 +85,41 @@ const Admin: React.FC = () => {
   ];
 
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [editingRole, setEditingRole] = useState<any>(null);
   const [newUser, setNewUser] = useState({ email: '', name: '', role: 'ml-engineer' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'inactive'>('all');
 
   const handleAddUser = () => {
-    const user = {
+    const user: User = {
       id: (users.length + 1).toString(),
       ...newUser,
       status: 'active',
       teams: [],
+      createdAt: new Date().toISOString().split('T')[0],
     };
     setUsers([...users, user]);
     setShowUserModal(false);
     setNewUser({ email: '', name: '', role: 'ml-engineer' });
+    showNotification('User added successfully', 'success');
+  };
+
+  const handleApproveUser = (userId: string) => {
+    setUsers(users.map(u =>
+      u.id === userId ? { ...u, status: 'active' } : u
+    ));
+    showNotification('User approved and activated', 'success');
+  };
+
+  const handleRejectUser = (userId: string) => {
+    setUsers(users.filter(u => u.id !== userId));
+    showNotification('User rejected and removed', 'success');
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    setUsers(users.filter(u => u.id !== userId));
+    showNotification('User deleted', 'success');
   };
 
   const getRoleColor = (role: string) => {
@@ -76,6 +136,9 @@ const Admin: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: 'Administration' }]} />
+
       <h1 className="text-3xl font-bold">Administration</h1>
 
       {/* Demo Credentials */}
@@ -141,17 +204,108 @@ const Admin: React.FC = () => {
         </div>
         <p className="text-xs text-gray-400 mt-4">💡 Tip: Use any of these credentials to test different user roles and their permissions</p>
       </div>
-      {/* User Management */}
+      
+      {/* Pending User Approvals */}
+      {users.filter(u => u.status === 'pending').length > 0 && (
+        <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg p-6 border border-yellow-500/30">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Clock className="w-5 h-5 text-yellow-400" />
+              Pending User Approvals
+            </h3>
+            <span className="px-3 py-1 bg-yellow-600/20 text-yellow-300 text-sm rounded-full">
+              {users.filter(u => u.status === 'pending').length} pending
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {users.filter(u => u.status === 'pending').map(user => (
+              <div key={user.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="font-semibold">{user.name}</h4>
+                  <p className="text-sm text-gray-400 mt-1">{user.email}</p>
+                  <div className="flex gap-2 mt-2">
+                    <select
+                      defaultValue={user.role}
+                      onChange={(e) => setUsers(users.map(u => u.id === user.id ? { ...u, role: e.target.value } : u))}
+                      className="px-3 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                    >
+                      {roles.map(role => (
+                        <option key={role.id} value={role.id} className="bg-gray-800">
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleApproveUser(user.id)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition text-sm"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleRejectUser(user.id)}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition text-sm"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">User Management</h3>
           <button
             onClick={() => setShowUserModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition text-sm"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setShowUserModal(true);
+              }
+            }}
           >
             <Plus className="w-4 h-4" />
             Add User
           </button>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="space-y-4 mb-6">
+          <SearchBar
+            placeholder="Search users by name, email..."
+            onSearch={setSearchQuery}
+          />
+
+          <div className="flex gap-2 flex-wrap">
+            <FilterChip
+              label="All"
+              isActive={statusFilter === 'all'}
+              onClick={() => setStatusFilter('all')}
+            />
+            <FilterChip
+              label="Active"
+              isActive={statusFilter === 'active'}
+              onClick={() => setStatusFilter('active')}
+            />
+            <FilterChip
+              label="Pending"
+              isActive={statusFilter === 'pending'}
+              onClick={() => setStatusFilter('pending')}
+            />
+            <FilterChip
+              label="Inactive"
+              isActive={statusFilter === 'inactive'}
+              onClick={() => setStatusFilter('inactive')}
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -167,7 +321,15 @@ const Admin: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {users
+                .filter(u => {
+                  const matchesSearch = searchQuery === '' || 
+                    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    u.email.toLowerCase().includes(searchQuery.toLowerCase());
+                  const matchesStatus = statusFilter === 'all' || u.status === statusFilter;
+                  return matchesSearch && matchesStatus;
+                })
+                .map((user) => (
                 <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
                   <td className="py-3 px-3">{user.name}</td>
                   <td className="py-3 px-3 text-gray-400">{user.email}</td>
@@ -184,9 +346,13 @@ const Admin: React.FC = () => {
                     <button className="p-1 hover:bg-gray-600 rounded">
                       <Edit2 className="w-4 h-4 text-gray-400" />
                     </button>
-                    <button className="p-1 hover:bg-gray-600 rounded">
-                      <Trash2 className="w-4 h-4 text-gray-400" />
-                    </button>
+                    {user.status !== 'pending' && (
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="p-1 hover:bg-gray-600 rounded">
+                        <Trash2 className="w-4 h-4 text-gray-400" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -197,22 +363,55 @@ const Admin: React.FC = () => {
 
       {/* Role Definitions */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h3 className="text-lg font-semibold mb-4">Role Definitions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Role Definitions</h3>
+          <button
+            onClick={() => {
+              setEditingRole(roles[0]);
+              setShowRoleModal(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition text-sm"
+          >
+            <Edit2 className="w-4 h-4" />
+            Edit Roles
+          </button>
+        </div>
+
+        <div className="space-y-4">
           {roles.map((role) => (
-            <div key={role.id} className="border border-gray-700 rounded-lg p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h4 className="font-medium">{role.name}</h4>
-                  <p className="text-xs text-gray-400 mt-1">{role.id}</p>
-                </div>
-                <Shield className="w-4 h-4 text-blue-500" />
+            <div key={role.id} className="bg-gray-700/30 rounded p-4 border border-gray-700">
+              <div className="flex items-start justify-between mb-2">
+                <h4 className="font-semibold">{role.name}</h4>
+                <span className="text-xs px-2 py-1 bg-gray-600 rounded">{role.permissions.length} permissions</span>
               </div>
-              <div className="space-y-1">
-                {role.permissions.map((perm) => (
-                  <p key={perm} className="text-xs text-gray-400">✓ {perm.replace('_', ' ')}</p>
+              <div className="flex flex-wrap gap-2">
+                {role.permissions.map((permission) => (
+                  <span key={permission} className="text-xs px-2 py-1 bg-gray-600/50 rounded text-gray-300">
+                    {permission.replace(/_/g, ' ')}
+                  </span>
                 ))}
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Audit Log Preview */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 className="text-lg font-semibold mb-4">Recent Admin Actions</h3>
+        <div className="space-y-3 max-h-64 overflow-y-auto">
+          {[
+            { action: 'User Approved', user: 'Evan Martinez', timestamp: '2 hours ago', status: 'success' },
+            { action: 'Role Changed', user: 'Alice Johnson', timestamp: '5 hours ago', status: 'info' },
+            { action: 'User Deleted', user: 'Test User', timestamp: '1 day ago', status: 'warning' },
+            { action: 'Permission Updated', user: 'ML Engineer', timestamp: '2 days ago', status: 'info' },
+          ].map((log, idx) => (
+            <div key={idx} className="flex items-center justify-between p-3 bg-gray-700/30 rounded border border-gray-700">
+              <div>
+                <p className="font-medium text-sm">{log.action}</p>
+                <p className="text-xs text-gray-400">{log.user}</p>
+              </div>
+              <p className="text-xs text-gray-500">{log.timestamp}</p>
             </div>
           ))}
         </div>
@@ -342,6 +541,55 @@ const Admin: React.FC = () => {
                 className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
               >
                 Add User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Editor Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700 max-h-96 overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6">Edit Role Permissions</h2>
+
+            <div className="space-y-4">
+              {roles.map(role => (
+                <div key={role.id} className="bg-gray-700/30 rounded-lg p-4 border border-gray-700">
+                  <h3 className="font-semibold mb-3">{role.name}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {role.permissions.map(permission => (
+                      <button
+                        key={permission}
+                        className="px-3 py-1 bg-blue-600/30 border border-blue-500 text-blue-300 rounded text-sm hover:bg-blue-600/50 transition"
+                      >
+                        {permission.replace(/_/g, ' ')}
+                        <span className="ml-2 text-xs">×</span>
+                      </button>
+                    ))}
+                    <button className="px-3 py-1 border border-dashed border-gray-500 text-gray-400 rounded text-sm hover:border-gray-400 transition">
+                      + Add Permission
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  showNotification('Role permissions updated', 'success');
+                  setShowRoleModal(false);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition"
+              >
+                Save Changes
               </button>
             </div>
           </div>

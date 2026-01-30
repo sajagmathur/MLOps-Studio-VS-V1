@@ -20,11 +20,14 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
+  sessionWarning: boolean;
+  timeUntilExpiry: number | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (data: any) => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
+  extendSession: () => void;
 }
 
 const defaultContext: AuthContextType = {
@@ -33,11 +36,14 @@ const defaultContext: AuthContextType = {
   isLoading: true,
   isAuthenticated: false,
   error: null,
+  sessionWarning: false,
+  timeUntilExpiry: null,
   login: async () => {},
   logout: () => {},
   register: async () => {},
   hasPermission: () => false,
   hasRole: () => false,
+  extendSession: () => {},
 };
 
 export const AuthContext = createContext<AuthContextType>(defaultContext);
@@ -62,6 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionWarning, setSessionWarning] = useState(false);
+  const [timeUntilExpiry, setTimeUntilExpiry] = useState<number | null>(null);
 
   console.log('🔐 AuthProvider mounted - checking for stored token');
 
@@ -70,21 +78,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🔐 AuthProvider useEffect running');
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
+    const sessionTimeout = localStorage.getItem('sessionTimeout');
 
     console.log('🔐 Stored token:', storedToken ? 'YES' : 'NO');
     console.log('🔐 Stored user:', storedUser ? 'YES' : 'NO');
 
     if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        console.log('🔐 Restored user from storage');
-        // Don't wait for backend verification - just load from local storage
-      } catch (err) {
-        console.warn('🔐 Failed to parse stored user:', err);
+      // Check if session has expired
+      if (sessionTimeout && Date.now() > parseInt(sessionTimeout)) {
+        console.log('🔐 Session expired - logging out');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('loginTime');
+        localStorage.removeItem('sessionTimeout');
         setError('Session expired. Please login again.');
+      } else {
+        try {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+          console.log('🔐 Restored user from storage');
+          // Refresh session timeout
+          if (!sessionTimeout) {
+            localStorage.setItem('sessionTimeout', (Date.now() + 24 * 60 * 60 * 1000).toString());
+          }
+        } catch (err) {
+          console.warn('🔐 Failed to parse stored user:', err);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('loginTime');
+          localStorage.removeItem('sessionTimeout');
+          setError('Session expired. Please login again.');
+        }
       }
     } else {
       console.log('🔐 No stored token/user - user needs to login');
@@ -93,21 +117,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const verifyToken = async (token: string) => {
-    // Async verification with backend - but doesn't block app loading
-    try {
-      const response = await fetch('http://localhost:5000/api/auth/verify', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        // Token might be invalid - logout user
+  // Monitor session timeout and warn user before expiry
+  useEffect(() => {
+    if (!user || !token) return;
+
+    const checkSessionTimeout = () => {
+      const sessionTimeout = localStorage.getItem('sessionTimeout');
+      if (!sessionTimeout) return;
+
+      const timeRemaining = parseInt(sessionTimeout) - Date.now();
+      const warningThreshold = 60 * 60 * 1000; // 1 hour before expiry
+
+      if (timeRemaining <= 0) {
+        // Session expired
         logout();
+        setError('Session expired. Please login again.');
+      } else if (timeRemaining <= warningThreshold && timeRemaining > 0) {
+        // Show warning
+        setSessionWarning(true);
+        setTimeUntilExpiry(Math.floor(timeRemaining / 1000)); // Convert to seconds
+      } else {
+        // Session still valid, hide warning
+        setSessionWarning(false);
+        setTimeUntilExpiry(null);
       }
-    } catch (err) {
-      // Backend not available - just warn but don't logout
-      console.warn('Could not verify token with backend');
-    }
-  };
+    };
+
+    // Check immediately
+    checkSessionTimeout();
+
+    // Set interval to check every minute
+    const interval = setInterval(checkSessionTimeout, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, token]);
+
+  const extendSession = useCallback(() => {
+    const newTimeout = Date.now() + 24 * 60 * 60 * 1000;
+    localStorage.setItem('sessionTimeout', newTimeout.toString());
+    setSessionWarning(false);
+    setTimeUntilExpiry(null);
+  }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -127,8 +176,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const demoToken = 'demo-token-' + Date.now();
         localStorage.setItem('token', demoToken);
         localStorage.setItem('user', JSON.stringify(demoUser));
+        localStorage.setItem('loginTime', new Date().toISOString());
         setToken(demoToken);
         setUser(demoUser);
+        return;
+      }
+
+      // Demo users for testing different roles
+      const demoUsers: Record<string, User> = {
+        'alice@org.com': {
+          id: '2',
+          email: 'alice@org.com',
+          name: 'Alice Johnson',
+          role: 'ml-engineer',
+          teams: ['Data', 'Models'],
+          createdAt: new Date().toISOString(),
+        },
+        'bob@org.com': {
+          id: '3',
+          email: 'bob@org.com',
+          name: 'Bob Smith',
+          role: 'data-engineer',
+          teams: ['Data'],
+          createdAt: new Date().toISOString(),
+        },
+        'carol@org.com': {
+          id: '4',
+          email: 'carol@org.com',
+          name: 'Carol Davis',
+          role: 'model-sponsor',
+          teams: ['Stakeholders'],
+          createdAt: new Date().toISOString(),
+        },
+      };
+
+      // Check if it's a demo user
+      if (demoUsers[email] && password === 'password') {
+        const user = demoUsers[email];
+        const token = 'demo-token-' + Date.now();
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('loginTime', new Date().toISOString());
+        localStorage.setItem('sessionTimeout', (Date.now() + 24 * 60 * 60 * 1000).toString()); // 24 hours
+        setToken(token);
+        setUser(user);
         return;
       }
       
@@ -137,8 +228,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await authAPI.login(email, password) as any;
         
         if (response.token && response.user) {
+          // Check if user is approved (not pending)
+          if (response.user.status === 'pending') {
+            throw new Error('Your account is pending admin approval. Please wait for an approval email.');
+          }
+
           localStorage.setItem('token', response.token);
           localStorage.setItem('user', JSON.stringify(response.user));
+          localStorage.setItem('loginTime', new Date().toISOString());
+          localStorage.setItem('sessionTimeout', (Date.now() + 24 * 60 * 60 * 1000).toString());
           setToken(response.token);
           setUser(response.user);
         } else {
@@ -157,6 +255,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     authAPI.logout();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('loginTime');
+    localStorage.removeItem('sessionTimeout');
     setToken(null);
     setUser(null);
     setError(null);
@@ -200,11 +302,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isAuthenticated: !!user && !!token,
     error,
+    sessionWarning,
+    timeUntilExpiry,
     login,
     logout,
     register,
     hasPermission,
     hasRole,
+    extendSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

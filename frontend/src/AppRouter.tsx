@@ -1,169 +1,116 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { I18nProvider } from './contexts/I18nContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationContainer } from './components/NotificationContainer';
-import Logo from './components/Logo';
+import { Clock, RefreshCw } from 'lucide-react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
-import PipelineDAG from './pages/PipelineDAG';
+import DataIngestion from './pages/DataIngestion';
+import DataPreparation from './pages/DataPreparation';
+import ModelRegistry from './pages/ModelRegistry';
+import Deployment from './pages/Deployment';
+import Inferencing from './pages/Inferencing';
+import ManualApproval from './pages/ManualApproval';
+import Pipeline from './pages/Pipeline';
+import Pipelines from './pages/Pipelines';
 import Monitoring from './pages/Monitoring';
-import CICD from './pages/CICD';
 import Integrations from './pages/Integrations';
 import Admin from './pages/Admin';
+import Profile from './pages/Profile';
 import Workflow from './App';
-import { Menu, X, LogOut } from 'lucide-react';
+import TopBarEnhanced from './components/TopBarEnhanced';
+import LeftNavigation from './components/LeftNavigation';
 
 /**
- * Navigation Link Component
+ * Session Warning Banner Component
  */
-const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => {
-  const location = useLocation();
-  const isActive = location.pathname === to;
+const SessionWarningBanner: React.FC = () => {
+  const { sessionWarning, timeUntilExpiry, extendSession } = useAuth();
+
+  if (!sessionWarning || timeUntilExpiry === null) return null;
+
+  const hours = Math.floor(timeUntilExpiry / 3600);
+  const minutes = Math.floor((timeUntilExpiry % 3600) / 60);
+
   return (
-    <Link
-      to={to}
-      className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm font-medium ${
-        isActive
-          ? 'bg-white/30 text-white shadow-lg'
-          : 'text-white/70 hover:bg-white/10 hover:text-white'
-      }`}
-    >
-      {children}
-    </Link>
+    <div className="fixed top-20 left-0 right-0 z-[1000] mx-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-500/50 rounded-lg p-4 backdrop-blur-md md:ml-64">
+      <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
+          <Clock size={20} className="text-amber-400 flex-shrink-0" />
+          <div>
+            <p className="text-amber-200 font-semibold text-sm">Your session expires in {hours}h {minutes}m</p>
+            <p className="text-amber-300/70 text-xs">Your login session will expire due to inactivity.</p>
+          </div>
+        </div>
+        <button
+          onClick={extendSession}
+          className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-all duration-200 flex-shrink-0 text-sm font-medium"
+        >
+          <RefreshCw size={16} />
+          Extend Session
+        </button>
+      </div>
+    </div>
   );
 };
 
 /**
- * Layout wrapper with navigation
+ * Main Layout with Left Sidebar + Top Bar
  */
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { logout, user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const { theme } = useTheme();
+
+  const bgClass = theme === 'dark'
+    ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'
+    : 'bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100';
+
+  const textColorClass = theme === 'dark' ? 'text-white' : 'text-slate-900';
+  const secondaryTextClass = theme === 'dark' ? 'text-white/60' : 'text-slate-600';
+  const borderClass = theme === 'dark' ? 'border-white/10' : 'border-slate-200';
+  const bgSecondaryClass = theme === 'dark' ? 'bg-white/5' : 'bg-slate-100/40';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Top Navigation */}
-      <nav className="sticky top-0 z-50 bg-gradient-to-r from-blue-600/90 via-purple-600/90 to-pink-600/90 backdrop-blur-md border-b border-white/20 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex justify-between items-center py-4">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-2">
-                <Logo size="md" />
-                <h1 className="text-2xl font-black text-white">MLOps Studio</h1>
-              </div>
-              
-              {/* Navigation Links */}
-              <div className="flex gap-2">
-                <NavLink to="/">Dashboard</NavLink>
-                <NavLink to="/projects">Projects</NavLink>
-                <NavLink to="/pipelines">Pipelines</NavLink>
-                <NavLink to="/monitoring">Monitoring</NavLink>
-                <NavLink to="/cicd">CI/CD</NavLink>
-                <NavLink to="/integrations">Integrations</NavLink>
-                <NavLink to="/workflow">Workflow</NavLink>
-                {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-              </div>
-            </div>
+    <div className={`min-h-screen ${bgClass} transition-colors duration-300`}>
+      {/* Session Warning Banner */}
+      <SessionWarningBanner />
 
-            {/* User Menu */}
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col items-end">
-                <p className="text-white font-medium text-sm">{user?.name}</p>
-                <p className="text-white/60 text-xs capitalize">{user?.role}</p>
-              </div>
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center border border-white/30">
-                <span className="text-white font-bold">{user?.name?.charAt(0).toUpperCase()}</span>
-              </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setMobileMenuOpen(false);
-                }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 transition-all text-sm font-medium"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
-            </div>
-          </div>
+      {/* Top Bar */}
+      <TopBarEnhanced />
 
-          {/* Mobile Navigation */}
-          <div className="md:hidden flex justify-between items-center py-4">
-            <div className="flex items-center gap-2">
-              <Logo size="sm" />
-            </div>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white hover:bg-white/10 rounded-lg transition-all"
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
+      {/* Left Sidebar Navigation */}
+      <LeftNavigation />
 
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden border-t border-white/20 py-4 space-y-2">
-              <NavLink to="/">Dashboard</NavLink>
-              <NavLink to="/projects">Projects</NavLink>
-              <NavLink to="/pipelines">Pipelines</NavLink>
-              <NavLink to="/monitoring">Monitoring</NavLink>
-              <NavLink to="/cicd">CI/CD</NavLink>
-              <NavLink to="/integrations">Integrations</NavLink>
-              <NavLink to="/workflow">Workflow</NavLink>
-              {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-              <button
-                onClick={() => {
-                  logout();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 transition-all text-sm font-medium"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
-            </div>
-          )}
+      {/* Main Content Area */}
+      <main className="pt-20 md:pt-20 md:pl-64 transition-all duration-300">
+        <div className="px-4 sm:px-6 py-8 max-w-7xl mx-auto">
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
-      </nav>
-
-      {/* Breadcrumb/Status Bar */}
-      <div className="bg-white/5 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2">
-          <div className="flex items-center justify-between text-xs text-white/60">
-            <span>Project: ML Pipeline System</span>
-            <span>Status: ✅ Online</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <ErrorBoundary>
-          {children}
-        </ErrorBoundary>
       </main>
 
       {/* Notifications */}
       <NotificationContainer />
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-white/5 mt-12">
+      <footer className={`border-t ${borderClass} ${bgSecondaryClass} mt-12 md:ml-64 transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
             <div>
-              <p className="text-white font-bold">MLOps Studio v1.0</p>
-              <p className="text-white/60 text-sm">Production ML Operations</p>
+              <p className={`${textColorClass} font-bold transition-colors`}>MLOps Studio v1.0</p>
+              <p className={`${secondaryTextClass} text-sm transition-colors`}>Production ML Operations</p>
             </div>
             <div>
-              <p className="text-white/60 text-sm">© 2025 MLOps Team. All rights reserved.</p>
+              <p className={`${secondaryTextClass} text-sm transition-colors`}>© 2025 MLOps Team. All rights reserved.</p>
             </div>
             <div className="flex justify-center md:justify-end gap-4">
-              <a href="#" className="text-white/60 hover:text-white transition-colors">Docs</a>
-              <a href="#" className="text-white/60 hover:text-white transition-colors">Support</a>
+              <a href="#" className={`${secondaryTextClass} hover:${textColorClass} transition-colors`}>Docs</a>
+              <a href="#" className={`${secondaryTextClass} hover:${textColorClass} transition-colors`}>Support</a>
             </div>
           </div>
         </div>
@@ -177,22 +124,26 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const { theme } = useTheme();
 
-  console.log('🔄 AppRoutes rendering - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
+  const loadingBgClass = theme === 'dark'
+    ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'
+    : 'bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100';
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className={`flex items-center justify-center h-screen ${loadingBgClass} transition-colors duration-300`}>
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading...</p>
+          <div className={`w-16 h-16 border-4 rounded-full animate-spin mx-auto mb-4 ${
+            theme === 'dark' ? 'border-white/30 border-t-white' : 'border-slate-300 border-t-blue-600'
+          }`}></div>
+          <p className={`text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Loading...</p>
         </div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    console.log('📝 Not authenticated - showing login');
     return (
       <ErrorBoundary>
         <Login />
@@ -200,17 +151,22 @@ const AppRoutes: React.FC = () => {
     );
   }
 
-  console.log('✅ Authenticated - showing main app');
   return (
     <MainLayout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
-        <Route path="/pipelines" element={<PipelineDAG />} />
+        <Route path="/data-ingestion" element={<DataIngestion />} />
+        <Route path="/data-preparation" element={<DataPreparation />} />
+        <Route path="/model-registry" element={<ModelRegistry />} />
+        <Route path="/deployment" element={<Deployment />} />
+        <Route path="/inferencing" element={<Inferencing />} />
         <Route path="/monitoring" element={<Monitoring />} />
-        <Route path="/cicd" element={<CICD />} />
+        <Route path="/pipelines" element={<Pipelines />} />
+        <Route path="/manual-approval" element={<ManualApproval />} />
         <Route path="/integrations" element={<Integrations />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/workflow" element={<Workflow />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -222,26 +178,25 @@ const AppRoutes: React.FC = () => {
  * Root App Component with Providers
  */
 export default function AppRouter() {
-  console.log('🚀 AppRouter rendering - initializing full app with providers');
-  
-  // Get basename for GitHub Pages - if deployed to subdirectory
   const basename = import.meta.env.MODE === 'production' 
     ? window.location.pathname.split('/').length > 2 
       ? '/' + window.location.pathname.split('/')[1]
       : '/'
     : '/';
   
-  console.log('📍 Using basename:', basename);
-  
   try {
     return (
       <ErrorBoundary>
         <Router basename={basename}>
-          <AuthProvider>
-            <NotificationProvider>
-              <AppRoutes />
-            </NotificationProvider>
-          </AuthProvider>
+          <ThemeProvider>
+            <I18nProvider>
+              <AuthProvider>
+                <NotificationProvider>
+                  <AppRoutes />
+                </NotificationProvider>
+              </AuthProvider>
+            </I18nProvider>
+          </ThemeProvider>
         </Router>
       </ErrorBoundary>
     );

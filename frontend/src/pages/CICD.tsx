@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { CheckCircle, Clock, AlertCircle, GitBranch, MessageSquare } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const CICD: React.FC = () => {
+  const { theme } = useTheme();
   const [runs, setRuns] = useState([
     {
       id: '1',
