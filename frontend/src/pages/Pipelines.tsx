@@ -42,6 +42,7 @@ export default function Pipelines() {
   const { theme } = useTheme();
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [loading, setLoading] = useState(true);
+  // Pipeline builder modal state
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
@@ -53,17 +54,46 @@ export default function Pipelines() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('pipeline-builder-formData');
+    return saved ? JSON.parse(saved) : { name: '', description: '' };
   });
 
   const { showNotification } = useNotification();
 
+  // Restore pipeline builder modal state on mount
   useEffect(() => {
     loadPipelines();
     loadAvailableJobs();
+    const builderState = localStorage.getItem('pipeline-builder-state');
+    if (builderState) {
+      try {
+        const state = JSON.parse(builderState);
+        if (state.showBuilder) setShowBuilder(state.showBuilder);
+        if (state.editingId) setEditingId(state.editingId);
+        if (state.selectedPipeline) setSelectedPipeline(state.selectedPipeline);
+        if (state.pipelineSteps) setPipelineSteps(state.pipelineSteps);
+        if (state.formData) setFormData(state.formData);
+      } catch (e) {}
+    }
   }, []);
+
+  // Persist pipeline builder modal state
+  useEffect(() => {
+    const state = {
+      showBuilder,
+      editingId,
+      selectedPipeline,
+      pipelineSteps,
+      formData,
+    };
+    localStorage.setItem('pipeline-builder-state', JSON.stringify(state));
+  }, [showBuilder, editingId, selectedPipeline, pipelineSteps, formData]);
+
+  // Persist formData separately for initialization
+  useEffect(() => {
+    localStorage.setItem('pipeline-builder-formData', JSON.stringify(formData));
+  }, [formData]);
 
   const loadPipelines = async () => {
     setLoading(true);
@@ -168,10 +198,12 @@ export default function Pipelines() {
       setSelectedPipeline(pipeline);
       setPipelineSteps(pipeline.steps);
       setEditingId(pipeline.id);
+      setFormData({ name: pipeline.name, description: pipeline.description });
     } else {
       setSelectedPipeline(null);
       setPipelineSteps([]);
       setEditingId(null);
+      setFormData({ name: '', description: '' });
     }
     setShowBuilder(true);
   };

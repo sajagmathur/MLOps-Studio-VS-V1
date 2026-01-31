@@ -59,26 +59,26 @@ export default function Projects() {
       }));
       setFileTree(reconstructedTree);
     } else if (selectedProject) {
-      // Initialize with empty tree for new project
-      setFileTree([
+      // Initialize with sample tree for new project
+      const sampleFiles = [
         {
           id: 'src-folder',
           name: 'src',
-          type: 'folder',
+          type: 'folder' as const,
           expanded: true,
           children: [
             {
               id: 'train-py-sample',
               name: 'train.py',
-              type: 'file',
-              language: 'python',
+              type: 'file' as const,
+              language: 'python' as const,
               content: `# Training script for ${selectedProject.name}\nimport pandas as pd\n# Add your training code here`,
             },
             {
               id: 'infer-py-sample',
               name: 'inference.py',
-              type: 'file',
-              language: 'python',
+              type: 'file' as const,
+              language: 'python' as const,
               content: `# Inference script for ${selectedProject.name}\nimport pickle\n# Add your inference code here`,
             },
           ],
@@ -86,11 +86,21 @@ export default function Projects() {
         {
           id: 'dockerfile-sample',
           name: 'Dockerfile',
-          type: 'file',
-          language: 'dockerfile',
+          type: 'file' as const,
+          language: 'dockerfile' as const,
           content: `FROM python:3.10-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCMD ["python", "src/inference.py"]`,
         },
-      ]);
+      ];
+      setFileTree(sampleFiles);
+      // Also save sample files to GlobalContext so they are immediately available to jobs
+      if (!selectedProject.code || selectedProject.code.length === 0) {
+        const trainCode = { name: 'train.py', language: 'python' as const, content: `# Training script for ${selectedProject.name}\nimport pandas as pd\n# Add your training code here` };
+        const inferCode = { name: 'inference.py', language: 'python' as const, content: `# Inference script for ${selectedProject.name}\nimport pickle\n# Add your inference code here` };
+        const dockerCode = { name: 'Dockerfile', language: 'dockerfile' as const, content: `FROM python:3.10-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCMD ["python", "src/inference.py"]` };
+        global.addProjectCode(selectedProject.id, trainCode);
+        global.addProjectCode(selectedProject.id, inferCode);
+        global.addProjectCode(selectedProject.id, dockerCode);
+      }
     }
   }, [selectedProject?.id]);
 
@@ -269,6 +279,15 @@ export default function Projects() {
       setFileTree([...fileTree, newFile]);
     }
 
+    // Save to GlobalContext immediately so code is available to jobs
+    if (selectedProject) {
+      global.addProjectCode(selectedProject.id, {
+        name: filename,
+        language: fileType,
+        content: '',
+      });
+    }
+
     setNewFileName('');
     setFileType('python');
     setShowNewFileModal(false);
@@ -303,10 +322,111 @@ export default function Projects() {
       setFileTree([...fileTree, newFolder]);
     }
 
+    // Save folder structure to GlobalContext as a placeholder
+    if (selectedProject) {
+      global.addProjectCode(selectedProject.id, {
+        name: `${newFolderName}/.gitkeep`,
+        language: 'text',
+        content: '# Folder placeholder',
+      });
+    }
+
     setNewFolderName('');
     setShowNewFolderModal(false);
     setSelectedFolderId(null);
     showNotification('Folder created', 'success');
+  };
+
+  // Download functions
+  const downloadFile = (file: ProjectFile) => {
+    if (!file.content) return;
+    
+    const element = document.createElement('a');
+    const fileBlob = new Blob([file.content], { type: 'text/plain' });
+    element.href = URL.createObjectURL(fileBlob);
+    element.download = file.name;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    showNotification(`Downloaded ${file.name}`, 'success');
+  };
+
+  const downloadProjectAsZip = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      // Simple zip creation using a basic format
+      // Note: For production, consider using JSZip library
+      const files = selectedProject.code || [];
+      
+      if (files.length === 0) {
+        showNotification('No files to download', 'warning');
+        return;
+      }
+
+      // Create a simple text file containing all project files
+      let zipContent = `# ${selectedProject.name} Project Export\n\n`;
+      zipContent += `Generated: ${new Date().toLocaleString()}\n`;
+      zipContent += `Total Files: ${files.length}\n\n`;
+
+      files.forEach((file, index) => {
+        zipContent += `\n${'='.repeat(80)}\n`;
+        zipContent += `FILE ${index + 1}: ${file.name}\n`;
+        zipContent += `Language: ${file.language}\n`;
+        zipContent += `${'='.repeat(80)}\n`;
+        zipContent += file.content || '';
+        zipContent += '\n';
+      });
+
+      const element = document.createElement('a');
+      const fileBlob = new Blob([zipContent], { type: 'text/plain' });
+      element.href = URL.createObjectURL(fileBlob);
+      element.download = `${selectedProject.name.replace(/\s+/g, '_')}_export.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      
+      showNotification(`Downloaded project as text archive`, 'success');
+    } catch (err) {
+      console.error('Error downloading project:', err);
+      showNotification('Failed to download project', 'error');
+    }
+  };
+
+  const downloadAllCode = async () => {
+    if (!selectedProject || selectedProject.code.length === 0) {
+      showNotification('No code files to download', 'warning');
+      return;
+    }
+
+    try {
+      // Download all files as a concatenated text file
+      let allCode = `# ${selectedProject.name} - All Code Files\n\n`;
+      allCode += `Generated: ${new Date().toLocaleString()}\n`;
+      allCode += `Total Files: ${selectedProject.code.length}\n`;
+      allCode += `Environment: ${selectedProject.environment}\n\n`;
+
+      selectedProject.code.forEach((file, index) => {
+        allCode += `\n${'#'.repeat(80)}\n`;
+        allCode += `# FILE ${index + 1}: ${file.name} (${file.language})\n`;
+        allCode += `${'#'.repeat(80)}\n\n`;
+        allCode += file.content || '';
+        allCode += '\n';
+      });
+
+      const element = document.createElement('a');
+      const fileBlob = new Blob([allCode], { type: 'text/plain' });
+      element.href = URL.createObjectURL(fileBlob);
+      element.download = `${selectedProject.name.replace(/\s+/g, '_')}_all_code.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      
+      showNotification('Downloaded all code files', 'success');
+    } catch (err) {
+      console.error('Error downloading code:', err);
+      showNotification('Failed to download code', 'error');
+    }
   };
 
   const renderFileTree = (files: ProjectFile[], depth = 0): React.ReactNode => {
@@ -332,16 +452,28 @@ export default function Projects() {
             {file.type === 'folder' ? <FolderOpen size={14} /> : <FileText size={14} />}
             <span className="text-sm flex-1 truncate">{file.name}</span>
             {file.type === 'file' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteFile(file.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-600/20 rounded transition-all"
-                title="Delete file"
-              >
-                <Trash size={12} className="text-red-400" />
-              </button>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadFile(file);
+                  }}
+                  className="p-1 hover:bg-blue-600/20 rounded transition-all"
+                  title="Download file"
+                >
+                  <Download size={12} className="text-blue-400" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteFile(file.id);
+                  }}
+                  className="p-1 hover:bg-red-600/20 rounded transition-all"
+                  title="Delete file"
+                >
+                  <Trash size={12} className="text-red-400" />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -367,15 +499,37 @@ export default function Projects() {
               Environment: {selectedProject.environment} | Saved Files: {selectedProject.code.length}
             </p>
           </div>
-          <button
-            onClick={() => {
-              setViewMode('list');
-              setSelectedProjectId(null);
-            }}
-            className={`px-4 py-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} rounded-lg transition`}
-          >
-            Back to Projects
-          </button>
+          <div className="flex gap-2">
+            {selectedProject.code.length > 0 && (
+              <>
+                <button
+                  onClick={downloadAllCode}
+                  className={`px-4 py-2 flex items-center gap-2 rounded-lg transition ${theme === 'dark' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+                  title="Download all code files"
+                >
+                  <Download size={18} />
+                  All Code
+                </button>
+                <button
+                  onClick={downloadProjectAsZip}
+                  className={`px-4 py-2 flex items-center gap-2 rounded-lg transition ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+                  title="Download entire project"
+                >
+                  <Download size={18} />
+                  Project
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                setViewMode('list');
+                setSelectedProjectId(null);
+              }}
+              className={`px-4 py-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} rounded-lg transition`}
+            >
+              Back to Projects
+            </button>
+          </div>
         </div>
 
         {/* Workspace Grid */}
@@ -418,14 +572,23 @@ export default function Projects() {
               <>
                 <div className={`p-3 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'} flex items-center justify-between`}>
                   <span className={`font-semibold text-sm ${themeClasses.textPrimary(theme)}`}>{selectedFile.name}</span>
-                  <button
-                    onClick={() => handleSaveFileContent(selectedFile.content || '')}
-                    className="p-1 hover:bg-blue-600/20 rounded flex items-center gap-1 text-xs transition-colors text-blue-400"
-                    title="Save file to project"
-                  >
-                    <Save size={14} />
-                    Save
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => downloadFile(selectedFile)}
+                      className="p-1 hover:bg-green-600/20 rounded flex items-center gap-1 text-xs transition-colors text-green-400"
+                      title="Download file"
+                    >
+                      <Download size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleSaveFileContent(selectedFile.content || '')}
+                      className="p-1 hover:bg-blue-600/20 rounded flex items-center gap-1 text-xs transition-colors text-blue-400"
+                      title="Save file to project"
+                    >
+                      <Save size={14} />
+                      Save
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   value={selectedFile.content || ''}
@@ -615,7 +778,7 @@ export default function Projects() {
       {/* Projects Grid */}
       {paginatedProjects.length === 0 ? (
         <EmptyState
-          icon={Code}
+          icon={<Code size={48} />}
           title="No projects found"
           description="Create your first project to get started"
         />

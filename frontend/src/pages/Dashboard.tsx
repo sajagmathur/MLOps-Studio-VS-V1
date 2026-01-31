@@ -58,6 +58,7 @@ export default function Dashboard() {
     showNotification('Starting quick demo...', 'info');
 
     try {
+      console.log('🚀 Starting demo creation...');
       // Step 1: Create sample project
       const project = global.createProject({
         name: 'Boston Housing Model',
@@ -99,6 +100,8 @@ print(f"Predicted price: $" + str(prediction[0]*10000))`,
         ],
       });
 
+      console.log('✅ Project created:', project);
+      console.log('   Project ID:', project.id);
       showNotification('Created sample project', 'success');
 
       // Step 2: Create data ingestion job
@@ -113,6 +116,8 @@ print(f"Predicted price: $" + str(prediction[0]*10000))`,
         lastRun: new Date().toISOString(),
       });
 
+      console.log('✅ Ingestion job created:', ingestionJob);
+      console.log('   Ingestion projectId:', ingestionJob.projectId);
       showNotification('Data ingestion job created', 'success');
 
       // Step 3: Create data preparation job
@@ -127,6 +132,7 @@ print(f"Predicted price: $" + str(prediction[0]*10000))`,
         lastRun: new Date().toISOString(),
       });
 
+      console.log('✅ Preparation job created:', prepJob);
       showNotification('Data preparation job created', 'success');
 
       // Step 4: Register model
@@ -146,7 +152,7 @@ print(f"Predicted price: $" + str(prediction[0]*10000))`,
 
       showNotification('Model registered in registry', 'success');
 
-      // Step 5: Create deployment job
+      console.log('✅ Deployment job creating...');
       const deploymentJob = global.createDeploymentJob({
         name: 'Deploy to Production',
         projectId: project.id,
@@ -158,6 +164,8 @@ print(f"Predicted price: $" + str(prediction[0]*10000))`,
       });
 
       showNotification('Model deployed successfully', 'success');
+
+      console.log('✅ Deployment job created:', deploymentJob);
 
       // Step 6: Create inferencing job
       const inferencingJob = global.createInferencingJob({
@@ -193,6 +201,20 @@ print(f"Predicted price: $" + str(prediction[0]*10000))`,
       });
 
       showNotification('Monitoring job created', 'success');
+
+      // Wait a moment for state to fully propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Final verification - check localStorage directly
+      const storedState = JSON.parse(localStorage.getItem('mlops_studio_state') || '{}');
+      console.log('\n🎉 DEMO COMPLETE! Checking stored state:');
+      console.log('Project:', project.id, project.name);
+      console.log('Stored ingestion jobs:', storedState.ingestionJobs?.length || 0, storedState.ingestionJobs);
+      console.log('Stored preparation jobs:', storedState.preparationJobs?.length || 0, storedState.preparationJobs);
+      console.log('Stored registry models:', storedState.registryModels?.length || 0, storedState.registryModels);
+      console.log('Stored deployment jobs:', storedState.deploymentJobs?.length || 0, storedState.deploymentJobs);
+      console.log('Stored inferencing jobs:', storedState.inferencingJobs?.length || 0, storedState.inferencingJobs);
+      console.log('Stored monitoring jobs:', storedState.monitoringJobs?.length || 0, storedState.monitoringJobs);
 
       // Reload stats
       await loadDashboardData();

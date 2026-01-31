@@ -305,15 +305,14 @@ CMD ["python", "src/inference.py"]`);
           )}
 
           {/* Deployment Action */}
-          {selectedJob.status === 'created' && (
-            <button
-              onClick={() => handleRunDeployment(selectedJob.id)}
-              className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
-            >
-              <Play size={18} />
-              Deploy Model to {selectedJob.environment}
-            </button>
-          )}
+          <button
+            onClick={() => handleRunDeployment(selectedJob.id)}
+            disabled={selectedJob.status === 'building' || selectedJob.status === 'deploying'}
+            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
+          >
+            <Play size={18} />
+            {selectedJob.status === 'building' || selectedJob.status === 'deploying' ? 'Deploying...' : selectedJob.status === 'active' ? 'Redeploy Model' : 'Deploy Model'} to {selectedJob.environment}
+          </button>
         </div>
       )}
 

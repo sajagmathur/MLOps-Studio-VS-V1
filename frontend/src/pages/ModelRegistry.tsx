@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Upload, AlertCircle, Loader, Package, TrendingUp, Star, Check, Zap, Download, Code as CodeIcon, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Upload, AlertCircle, Loader, Package, TrendingUp, Star, Check, Zap, Download, Code as CodeIcon, ArrowRight, Play } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useNotification } from '../hooks/useNotification';
@@ -66,6 +66,24 @@ export default function ModelRegistry() {
       if (selectedModelId === modelId) setSelectedModelId(null);
       showNotification('Model deleted', 'success');
     }
+  };
+
+  const [testingModelId, setTestingModelId] = useState<string | null>(null);
+
+  const handleRunTest = (modelId: string) => {
+    setTestingModelId(modelId);
+    
+    setTimeout(() => {
+      global.updateRegistryModel(modelId, {
+        metrics: {
+          accuracy: Math.random() * 0.4 + 0.8,
+          precision: Math.random() * 0.4 + 0.8,
+          recall: Math.random() * 0.4 + 0.8,
+        },
+      });
+      setTestingModelId(null);
+      showNotification('Model test completed successfully', 'success');
+    }, 2000);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,12 +231,32 @@ export default function ModelRegistry() {
               <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>{selectedModel.name}</h2>
               <p className={`${themeClasses.textSecondary(theme)} text-sm`}>Version {selectedModel.version} • Project: {global.getProject(selectedModel.projectId)?.name}</p>
             </div>
-            <button
-              onClick={() => handleDeleteModel(selectedModel.id)}
-              className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm transition"
-            >
-              <Trash2 size={14} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleRunTest(selectedModel.id)}
+                disabled={testingModelId === selectedModel.id}
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white rounded-lg text-sm transition flex items-center gap-1"
+                title="Run model test"
+              >
+                {testingModelId === selectedModel.id ? (
+                  <>
+                    <Loader size={14} className="animate-spin" />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <Play size={14} />
+                    Test
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => handleDeleteModel(selectedModel.id)}
+                className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm transition"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 mb-6">

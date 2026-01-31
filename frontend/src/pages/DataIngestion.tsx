@@ -270,16 +270,14 @@ export default function DataIngestion() {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
-                  {selectedJob.status !== 'completed' && (
-                    <button
-                      onClick={() => handleRunJob(selectedJob.id)}
-                      disabled={selectedJob.status === 'running'}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white rounded-lg text-sm transition"
-                    >
-                      <Play size={14} />
-                      {selectedJob.status === 'running' ? 'Running...' : 'Run Job'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleRunJob(selectedJob.id)}
+                    disabled={selectedJob.status === 'running'}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white rounded-lg text-sm transition"
+                  >
+                    <Play size={14} />
+                    {selectedJob.status === 'running' ? 'Running...' : selectedJob.status === 'completed' ? 'Rerun Job' : 'Run Job'}
+                  </button>
                   <button
                     onClick={() => handleDeleteJob(selectedJob.id)}
                     className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm transition"
