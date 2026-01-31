@@ -26,7 +26,7 @@ export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', environment: 'dev' as const });
+  const [formData, setFormData] = useState({ name: '', description: '', environment: 'dev' as 'dev' | 'staging' | 'prod' });
   
   // Workspace state
   const [fileTree, setFileTree] = useState<ProjectFile[]>([]);
@@ -760,15 +760,14 @@ export default function Projects() {
       <div className="flex gap-4 items-center flex-wrap">
         <SearchBar
           placeholder="Search projects..."
-          value={searchQuery}
-          onChange={setSearchQuery}
+          onSearch={(query) => setSearchQuery(query)}
         />
         <div className="flex gap-2">
           {(['all', 'active', 'inactive'] as const).map(status => (
             <FilterChip
               key={status}
               label={status.charAt(0).toUpperCase() + status.slice(1)}
-              active={statusFilter === status}
+              isActive={statusFilter === status}
               onClick={() => setStatusFilter(status)}
             />
           ))}

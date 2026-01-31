@@ -65,39 +65,7 @@ export default function Dashboard() {
         description: 'Predict house prices using ML',
         environment: 'dev',
         status: 'active',
-        code: [
-          {
-            name: 'train.py',
-            language: 'python',
-            content: `import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.datasets import load_boston
-
-# Load data
-boston = load_boston()
-X = boston.data
-y = boston.target
-
-# Train model
-model = LinearRegression()
-model.fit(X, y)
-print(f"Model trained. R² Score: {model.score(X, y):.3f}")`,
-          },
-          {
-            name: 'inference.py',
-            language: 'python',
-            content: `import pickle
-import numpy as np
-
-# Load model
-model = pickle.load(open('model.pkl', 'rb'))
-
-# Make predictions
-sample = np.array([[0.02761, 75, 2.95, 0, 0.428, 7.077, 54.4, 4.84, 1, 296, 15.3, 360.2, 22.2]])
-prediction = model.predict(sample)
-print(f"Predicted price: $" + str(prediction[0]*10000))`,
-          },
-        ],
+        code: [],
       });
 
       console.log('✅ Project created:', project);
