@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { I18nProvider } from './contexts/I18nContext';
+import { GlobalProvider } from './contexts/GlobalContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationContainer } from './components/NotificationContainer';
 import { Clock, RefreshCw } from 'lucide-react';
@@ -192,7 +193,9 @@ export default function AppRouter() {
             <I18nProvider>
               <AuthProvider>
                 <NotificationProvider>
-                  <AppRoutes />
+                  <GlobalProvider>
+                    <AppRoutes />
+                  </GlobalProvider>
                 </NotificationProvider>
               </AuthProvider>
             </I18nProvider>
