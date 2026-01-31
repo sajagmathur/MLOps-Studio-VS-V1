@@ -389,18 +389,18 @@ export default function Pipeline() {
           }
         }
       } catch (err) {
-        console.error('[Pipeline] Error in 5-second approval check:', err);
+        console.error('[Pipeline] Error in approval check:', err);
       }
     };
 
-    // Poll every 5 seconds for approval status changes
-    const interval = setInterval(checkAndResumeApprovals, 5000);
+    // Poll every 1 second for approval status changes
+    const interval = setInterval(checkAndResumeApprovals, 1000);
     
     // Also do one immediate check on mount
     checkAndResumeApprovals();
     
     return () => {
-      console.log('[Pipeline] Clearing 5-second approval polling interval');
+      console.log('[Pipeline] Clearing approval polling interval');
       clearInterval(interval);
     };
   }, [pipelines]);
