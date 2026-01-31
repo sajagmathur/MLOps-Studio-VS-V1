@@ -603,7 +603,7 @@ export default function Pipeline() {
 
     console.log('[Pipeline] Resuming pipeline after approval:', pipelineId, 'from job index:', resumeFromJobIndex);
     setExecutingPipelineId(pipelineId);
-    setShowLogsPanel(pipelineId);
+    setExpandedPipelineId(pipelineId);
     addLogEntry(pipelineId, 'pipeline', 'System', 'success', `▶ Resuming pipeline after approval`);
 
     // Continue execution from the next job after the approval
@@ -839,7 +839,7 @@ ${jobSteps}
     if (!pipeline) return;
 
     setExecutingPipelineId(pipelineId);
-    setShowLogsPanel(pipelineId);
+    setExpandedPipelineId(pipelineId);
     setPipelineLogs({ ...pipelineLogs, [pipelineId]: [] });
     showNotification('Pipeline execution started...', 'info');
     addLogEntry(pipelineId, 'pipeline', 'System', 'info', `▶ Starting pipeline execution: ${pipeline.name}`);
@@ -1368,7 +1368,7 @@ ${jobSteps}
                         {pipeline.jobs.map((job, idx) => (
                           <React.Fragment key={job.jobId}>
                             <button
-                              onClick={() => setShowLogsPanel(pipeline.id)}
+                              onClick={() => setExpandedPipelineId(expandedPipelineId === pipeline.id ? null : pipeline.id)}
                               className={`flex-shrink-0 px-4 py-3 rounded-lg text-center min-w-fit border-2 transition cursor-pointer ${
                                 job.status === 'completed'
                                   ? 'border-green-500 bg-green-500/10 hover:bg-green-500/20'
@@ -1445,6 +1445,30 @@ ${jobSteps}
                         </p>
                       </div>
                     )}
+
+                    {/* Integrated Logs Panel */}
+                    {pipelineLogs[pipeline.id] && pipelineLogs[pipeline.id].length > 0 && (
+                      <div>
+                        <h4 className={`font-semibold ${themeClasses.textPrimary(theme)} mb-3`}>Execution Logs</h4>
+                        <div className={`border rounded-lg h-64 flex flex-col ${
+                          theme === 'dark' ? 'bg-slate-950 border-slate-700' : 'bg-slate-50 border-slate-300'
+                        }`}>
+                          <div className={`overflow-y-auto flex-1 p-4 font-mono text-xs`}>
+                            {pipelineLogs[pipeline.id].map((entry, idx) => (
+                              <div key={idx} className={`mb-1 ${
+                                entry.level === 'success' ? 'text-green-400' :
+                                entry.level === 'error' ? 'text-red-400' :
+                                entry.level === 'warning' ? 'text-yellow-400' :
+                                'text-slate-300'
+                              }`}>
+                                <span className="text-slate-500">[{entry.timestamp}]</span> <span className="text-blue-400">[{entry.jobName}]</span> {entry.message}
+                              </div>
+                            ))}
+                            <div ref={logsEndRef} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1454,33 +1478,7 @@ ${jobSteps}
       </div>
 
       {/* Logs Panel - Bottom Window */}
-      {showLogsPanel && pipelineLogs[showLogsPanel] && (
-        <div className={`fixed bottom-0 left-0 right-0 h-96 border-t rounded-t-lg shadow-2xl z-40 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}
-          style={{ borderColor: theme === 'dark' ? '#3f3f46' : '#e5e7eb' }}>
-          <div className="p-4 border-b flex items-center justify-between h-14" style={{ borderColor: theme === 'dark' ? '#3f3f46' : '#e5e7eb' }}>
-            <h3 className={`font-semibold ${themeClasses.textPrimary(theme)}`}>Pipeline Execution Logs</h3>
-            <button
-              onClick={() => setShowLogsPanel(null)}
-              className={`p-1 rounded transition ${theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}
-            >
-              <X size={20} className={themeClasses.textSecondary(theme)} />
-            </button>
-          </div>
-          <div className={`overflow-y-auto h-full p-4 font-mono text-xs ${theme === 'dark' ? 'bg-slate-950' : 'bg-slate-50'}`}>
-            {pipelineLogs[showLogsPanel].map((entry, idx) => (
-              <div key={idx} className={`mb-1 ${
-                entry.level === 'success' ? 'text-green-400' :
-                entry.level === 'error' ? 'text-red-400' :
-                entry.level === 'warning' ? 'text-yellow-400' :
-                'text-slate-300'
-              }`}>
-                <span className="text-slate-500">[{entry.timestamp}]</span> <span className="text-blue-400">[{entry.jobName}]</span> {entry.message}
-              </div>
-            ))}
-            <div ref={logsEndRef} />
-          </div>
-        </div>
-      )}
+      {/* Removed: Logs are now integrated into each pipeline's expanded view */}
     </div>
   );
 }
