@@ -113,10 +113,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <div>
               <p className={`${secondaryTextClass} text-sm transition-colors`}>© 2026 ML Ops team. All rights reserved.</p>
             </div>
-            <div className="flex justify-center md:justify-end gap-4">
-              <a href="#" className={`${secondaryTextClass} hover:${textColorClass} transition-colors`}>Docs</a>
-              <a href="#" className={`${secondaryTextClass} hover:${textColorClass} transition-colors`}>Support</a>
-            </div>
           </div>
         </div>
       </footer>
