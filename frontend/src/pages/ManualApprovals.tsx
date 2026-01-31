@@ -61,54 +61,28 @@ const ManualApprovals: React.FC = () => {
   const handleApprove = (approval: PendingApproval) => {
     console.log('[ManualApprovals] Approving:', approval.id);
     
-    // Remove from pending approvals
-    const updatedPending = pendingApprovals.filter(a => a.id !== approval.id);
+    // Update status to approved in pending (Pipeline.tsx will detect this and resume)
+    const updatedPending = pendingApprovals.map(a =>
+      a.id === approval.id ? { ...a, status: 'approved' as const } : a
+    );
     setPendingApprovals(updatedPending);
     localStorage.setItem('pending-pipeline-approvals', JSON.stringify(updatedPending));
+    console.log('[ManualApprovals] Updated approval status to approved:', approval.id);
     
-    // Add to approval history
-    const historyEntry: ApprovalHistory = {
-      id: approval.id,
-      pipelineId: approval.pipelineId,
-      pipelineName: approval.pipelineName,
-      jobName: approval.jobName,
-      status: 'approved',
-      requestedAt: approval.requestedAt,
-      decidedAt: new Date().toISOString(),
-    };
-    
-    const updatedHistory = [...approvalHistory, historyEntry];
-    setApprovalHistory(updatedHistory);
-    localStorage.setItem('approval-history', JSON.stringify(updatedHistory));
-    
-    console.log('[ManualApprovals] Moved approval to history:', approval.id);
     showNotification('✓ Approval granted! Pipeline will resume...', 'success');
   };
 
   const handleReject = (approval: PendingApproval) => {
     console.log('[ManualApprovals] Rejecting:', approval.id);
     
-    // Remove from pending approvals
-    const updatedPending = pendingApprovals.filter(a => a.id !== approval.id);
+    // Update status to rejected in pending (Pipeline.tsx will detect this and fail)
+    const updatedPending = pendingApprovals.map(a =>
+      a.id === approval.id ? { ...a, status: 'rejected' as const } : a
+    );
     setPendingApprovals(updatedPending);
     localStorage.setItem('pending-pipeline-approvals', JSON.stringify(updatedPending));
+    console.log('[ManualApprovals] Updated approval status to rejected:', approval.id);
     
-    // Add to approval history
-    const historyEntry: ApprovalHistory = {
-      id: approval.id,
-      pipelineId: approval.pipelineId,
-      pipelineName: approval.pipelineName,
-      jobName: approval.jobName,
-      status: 'rejected',
-      requestedAt: approval.requestedAt,
-      decidedAt: new Date().toISOString(),
-    };
-    
-    const updatedHistory = [...approvalHistory, historyEntry];
-    setApprovalHistory(updatedHistory);
-    localStorage.setItem('approval-history', JSON.stringify(updatedHistory));
-    
-    console.log('[ManualApprovals] Moved approval to history:', approval.id);
     showNotification('✗ Approval rejected. Pipeline will be marked as failed.', 'error');
   };
 
@@ -203,14 +177,52 @@ const ManualApprovals: React.FC = () => {
 
       {/* Approval History */}
       <div className="space-y-4">
-        <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>📋 Approval History ({approvalHistory.length})</h2>
+        <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>📋 Approval History ({approvalHistory.length + pendingApprovals.filter(a => a.status !== 'pending').length})</h2>
         
-        {approvalHistory.length === 0 ? (
+        {approvalHistory.length === 0 && pendingApprovals.filter(a => a.status !== 'pending').length === 0 ? (
           <div className={`p-8 rounded-lg text-center ${themeClasses.card(theme)}`}>
             <p className={themeClasses.textSecondary(theme)}>No approval history</p>
           </div>
         ) : (
           <div className="space-y-2">
+            {/* Completed approvals from pending list */}
+            {pendingApprovals.filter(a => a.status !== 'pending').map(pending => (
+              <div
+                key={pending.id}
+                className={`p-4 rounded-lg border flex items-center justify-between ${
+                  pending.status === 'approved'
+                    ? theme === 'dark'
+                      ? 'bg-green-500/10 border-green-500/30'
+                      : 'bg-green-50 border-green-300'
+                    : theme === 'dark'
+                    ? 'bg-red-500/10 border-red-500/30'
+                    : 'bg-red-50 border-red-300'
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-sm font-bold px-2 py-1 rounded ${
+                      pending.status === 'approved' 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-red-600 text-white'
+                    }`}>
+                      {pending.status === 'approved' ? '✓ APPROVED' : '✗ REJECTED'}
+                    </span>
+                  </div>
+                  <p className={`font-medium ${themeClasses.textPrimary(theme)}`}>
+                    {pending.pipelineName}
+                  </p>
+                  <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>
+                    Step: <strong>{pending.jobName}</strong>
+                  </p>
+                  <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>
+                    Requested: {new Date(pending.requestedAt).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            {/* History from approval-history storage */}
             {approvalHistory.map(record => (
               <div
                 key={record.id}
@@ -231,7 +243,7 @@ const ManualApprovals: React.FC = () => {
                         ? 'bg-green-600 text-white' 
                         : 'bg-red-600 text-white'
                     }`}>
-                      {record.status === 'approved' ? '✓ APPROVED (1)' : '✗ REJECTED (0)'}
+                      {record.status === 'approved' ? '✓ APPROVED' : '✗ REJECTED'}
                     </span>
                   </div>
                   <p className={`font-medium ${themeClasses.textPrimary(theme)}`}>
