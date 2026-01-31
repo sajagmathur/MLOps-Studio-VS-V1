@@ -59,7 +59,7 @@ export default function Projects() {
       }));
       setFileTree(reconstructedTree);
     } else if (selectedProject) {
-      // Initialize with sample tree for new project
+      // Initialize with sample tree for new project with code for each pipeline step
       const sampleFiles = [
         {
           id: 'src-folder',
@@ -68,18 +68,403 @@ export default function Projects() {
           expanded: true,
           children: [
             {
-              id: 'train-py-sample',
-              name: 'train.py',
+              id: 'ingest-py-sample',
+              name: '01_ingest.py',
               type: 'file' as const,
               language: 'python' as const,
-              content: `# Training script for ${selectedProject.name}\nimport pandas as pd\n# Add your training code here`,
+              content: `# Data Ingestion Script for ${selectedProject.name}
+import pandas as pd
+import requests
+from datetime import datetime
+
+class DataIngestion:
+    def __init__(self, source_url=None):
+        self.source_url = source_url
+        self.data = None
+        
+    def fetch_data(self):
+        """Fetch data from source"""
+        if self.source_url:
+            response = requests.get(self.source_url)
+            self.data = pd.read_json(response.json())
+        else:
+            # Load sample data
+            self.data = pd.read_csv('sample_data.csv')
+        
+        print(f"✓ Ingested {len(self.data)} records")
+        return self.data
+    
+    def save_raw_data(self, path='data/raw/'):
+        """Save ingested data"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filepath = f'{path}raw_data_{timestamp}.csv'
+        self.data.to_csv(filepath, index=False)
+        print(f"✓ Saved raw data to {filepath}")
+        return filepath
+
+if __name__ == '__main__':
+    ingestor = DataIngestion()
+    ingestor.fetch_data()
+    ingestor.save_raw_data()
+`,
             },
             {
-              id: 'infer-py-sample',
-              name: 'inference.py',
+              id: 'prep-py-sample',
+              name: '02_prepare.py',
               type: 'file' as const,
               language: 'python' as const,
-              content: `# Inference script for ${selectedProject.name}\nimport pickle\n# Add your inference code here`,
+              content: `# Data Preparation Script for ${selectedProject.name}
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+class DataPreparation:
+    def __init__(self, data_path):
+        self.df = pd.read_csv(data_path)
+        self.scaler = StandardScaler()
+        
+    def clean_data(self):
+        """Remove nulls and duplicates"""
+        initial_rows = len(self.df)
+        self.df = self.df.dropna()
+        self.df = self.df.drop_duplicates()
+        print(f"✓ Cleaned data: {initial_rows} -> {len(self.df)} rows")
+        return self.df
+    
+    def feature_engineering(self):
+        """Create new features"""
+        # Add your feature engineering logic
+        if 'timestamp' in self.df.columns:
+            self.df['date'] = pd.to_datetime(self.df['timestamp'])
+            self.df['hour'] = self.df['date'].dt.hour
+        print("✓ Features engineered")
+        return self.df
+    
+    def normalize_features(self):
+        """Normalize numerical features"""
+        numeric_cols = self.df.select_dtypes(include=['float64', 'int64']).columns
+        self.df[numeric_cols] = self.scaler.fit_transform(self.df[numeric_cols])
+        print("✓ Features normalized")
+        return self.df
+    
+    def prepare(self):
+        """Run full preparation pipeline"""
+        self.clean_data()
+        self.feature_engineering()
+        self.normalize_features()
+        return self.df
+    
+    def save_prepared_data(self, path='data/prepared/'):
+        """Save prepared data"""
+        self.df.to_csv(f'{path}prepared_data.csv', index=False)
+        print(f"✓ Saved prepared data to {path}")
+
+if __name__ == '__main__':
+    prep = DataPreparation('data/raw/raw_data.csv')
+    prep.prepare()
+    prep.save_prepared_data()
+`,
+            },
+            {
+              id: 'train-py-sample',
+              name: '03_train.py',
+              type: 'file' as const,
+              language: 'python' as const,
+              content: `# Model Training Script for ${selectedProject.name}
+import pandas as pd
+import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+
+class ModelTrainer:
+    def __init__(self, data_path):
+        self.df = pd.read_csv(data_path)
+        self.model = RandomForestClassifier(n_estimators=100)
+        self.metrics = {}
+        
+    def prepare_data(self):
+        """Split data into train/test"""
+        X = self.df.drop('target', axis=1) if 'target' in self.df.columns else self.df.iloc[:, :-1]
+        y = self.df['target'] if 'target' in self.df.columns else self.df.iloc[:, -1]
+        
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
+        print(f"✓ Data split: {len(self.X_train)} train, {len(self.X_test)} test")
+        
+    def train(self):
+        """Train the model"""
+        self.model.fit(self.X_train, self.y_train)
+        print("✓ Model training completed")
+        
+    def evaluate(self):
+        """Evaluate model performance"""
+        y_pred = self.model.predict(self.X_test)
+        self.metrics = {
+            'accuracy': accuracy_score(self.y_test, y_pred),
+            'precision': precision_score(self.y_test, y_pred, average='weighted'),
+            'recall': recall_score(self.y_test, y_pred, average='weighted'),
+        }
+        print(f"✓ Accuracy: {self.metrics['accuracy']:.4f}")
+        return self.metrics
+    
+    def save_model(self, path='models/'):
+        """Save trained model"""
+        with open(f'{path}model.pkl', 'wb') as f:
+            pickle.dump(self.model, f)
+        print(f"✓ Model saved to {path}")
+        return self.metrics
+
+if __name__ == '__main__':
+    trainer = ModelTrainer('data/prepared/prepared_data.csv')
+    trainer.prepare_data()
+    trainer.train()
+    trainer.evaluate()
+    trainer.save_model()
+`,
+            },
+            {
+              id: 'eval-py-sample',
+              name: '04_evaluate.py',
+              type: 'file' as const,
+              language: 'python' as const,
+              content: `# Model Evaluation Script for ${selectedProject.name}
+import pandas as pd
+import pickle
+import json
+from sklearn.metrics import (
+    confusion_matrix, classification_report, 
+    roc_auc_score, f1_score
+)
+
+class ModelEvaluation:
+    def __init__(self, model_path, test_data_path):
+        with open(model_path, 'rb') as f:
+            self.model = pickle.load(f)
+        self.test_df = pd.read_csv(test_data_path)
+        self.evaluation_results = {}
+        
+    def comprehensive_evaluation(self):
+        """Run comprehensive evaluation"""
+        X = self.test_df.drop('target', axis=1) if 'target' in self.test_df.columns else self.test_df.iloc[:, :-1]
+        y = self.test_df['target'] if 'target' in self.test_df.columns else self.test_df.iloc[:, -1]
+        
+        y_pred = self.model.predict(X)
+        y_proba = self.model.predict_proba(X)[:, 1] if hasattr(self.model, 'predict_proba') else None
+        
+        self.evaluation_results = {
+            'f1_score': float(f1_score(y, y_pred, average='weighted')),
+            'confusion_matrix': confusion_matrix(y, y_pred).tolist(),
+            'classification_report': classification_report(y, y_pred, output_dict=True),
+        }
+        
+        if y_proba is not None:
+            try:
+                self.evaluation_results['roc_auc'] = float(roc_auc_score(y, y_proba))
+            except:
+                pass
+        
+        return self.evaluation_results
+    
+    def check_performance_threshold(self, min_f1=0.8):
+        """Check if model meets performance threshold"""
+        f1 = self.evaluation_results.get('f1_score', 0)
+        meets_threshold = f1 >= min_f1
+        print(f"✓ Performance Check: F1={f1:.4f} | Threshold={min_f1} | {'PASS' if meets_threshold else 'FAIL'}")
+        return meets_threshold
+    
+    def save_evaluation_report(self, path='reports/'):
+        """Save evaluation report"""
+        with open(f'{path}evaluation_report.json', 'w') as f:
+            json.dump(self.evaluation_results, f, indent=2)
+        print(f"✓ Evaluation report saved to {path}")
+        return self.evaluation_results
+
+if __name__ == '__main__':
+    evaluator = ModelEvaluation('models/model.pkl', 'data/prepared/prepared_data.csv')
+    evaluator.comprehensive_evaluation()
+    evaluator.check_performance_threshold()
+    evaluator.save_evaluation_report()
+`,
+            },
+            {
+              id: 'deploy-py-sample',
+              name: '05_deploy.py',
+              type: 'file' as const,
+              language: 'python' as const,
+              content: `# Model Deployment Script for ${selectedProject.name}
+import pickle
+import json
+from datetime import datetime
+
+class ModelDeployment:
+    def __init__(self, model_path):
+        with open(model_path, 'rb') as f:
+            self.model = pickle.load(f)
+        self.deployment_info = {}
+        
+    def create_deployment_config(self):
+        """Create deployment configuration"""
+        self.deployment_info = {
+            'model_name': '${selectedProject.name}',
+            'model_version': '1.0.0',
+            'deployment_timestamp': datetime.now().isoformat(),
+            'environment': 'production',
+            'endpoint': '/api/predict',
+            'health_check_endpoint': '/health',
+        }
+        print("✓ Deployment configuration created")
+        return self.deployment_info
+    
+    def register_model(self):
+        """Register model in model registry"""
+        registry_entry = {
+            'model_id': f'model-{datetime.now().strftime("%Y%m%d%H%M%S")}',
+            'name': self.deployment_info['model_name'],
+            'version': self.deployment_info['model_version'],
+            'status': 'registered',
+            'registered_at': self.deployment_info['deployment_timestamp'],
+        }
+        print(f"✓ Model registered: {registry_entry['model_id']}")
+        return registry_entry
+    
+    def create_api_wrapper(self):
+        """Create API wrapper for model"""
+        api_code = '''
+from flask import Flask, request, jsonify
+import pickle
+
+app = Flask(__name__)
+
+# Load model
+with open('model.pkl', 'rb') as f:
+    model = pickle.load(f)
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+    features = data.get('features', [])
+    prediction = model.predict([features])
+    return jsonify({'prediction': prediction[0]})
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'healthy'})
+
+if __name__ == '__main__':
+    app.run(debug=False, port=5000)
+'''
+        return api_code
+    
+    def save_deployment_config(self, path='deployment/'):
+        """Save deployment configuration"""
+        with open(f'{path}deployment_config.json', 'w') as f:
+            json.dump(self.deployment_info, f, indent=2)
+        print(f"✓ Deployment config saved to {path}")
+
+if __name__ == '__main__':
+    deployer = ModelDeployment('models/model.pkl')
+    deployer.create_deployment_config()
+    deployer.register_model()
+    deployer.save_deployment_config()
+`,
+            },
+            {
+              id: 'monitor-py-sample',
+              name: '06_monitor.py',
+              type: 'file' as const,
+              language: 'python' as const,
+              content: `# Model Monitoring Script for ${selectedProject.name}
+import json
+import pandas as pd
+from datetime import datetime
+
+class ModelMonitoring:
+    def __init__(self, model_name='${selectedProject.name}'):
+        self.model_name = model_name
+        self.metrics_history = []
+        
+    def check_data_drift(self, current_data_path, baseline_data_path):
+        """Detect data drift in input features"""
+        current_df = pd.read_csv(current_data_path)
+        baseline_df = pd.read_csv(baseline_data_path)
+        
+        drift_report = {
+            'timestamp': datetime.now().isoformat(),
+            'model': self.model_name,
+            'features_checked': len(current_df.columns),
+            'drift_detected': False,
+            'feature_drifts': []
+        }
+        
+        for col in current_df.select_dtypes(include=['float64', 'int64']).columns:
+            current_mean = current_df[col].mean()
+            baseline_mean = baseline_df[col].mean()
+            drift_pct = abs(current_mean - baseline_mean) / baseline_mean * 100 if baseline_mean != 0 else 0
+            
+            if drift_pct > 5:  # 5% threshold
+                drift_report['drift_detected'] = True
+                drift_report['feature_drifts'].append({
+                    'feature': col,
+                    'drift_percentage': drift_pct
+                })
+        
+        print(f"✓ Data Drift Check: {'DRIFT DETECTED' if drift_report['drift_detected'] else 'No drift'}")
+        return drift_report
+    
+    def check_model_performance(self, predictions_file):
+        """Monitor model prediction metrics"""
+        with open(predictions_file, 'r') as f:
+            predictions = json.load(f)
+        
+        perf_metrics = {
+            'timestamp': datetime.now().isoformat(),
+            'model': self.model_name,
+            'total_predictions': len(predictions),
+            'average_confidence': sum(p.get('confidence', 0) for p in predictions) / len(predictions) if predictions else 0,
+        }
+        
+        print(f"✓ Model Performance: {perf_metrics['total_predictions']} predictions")
+        return perf_metrics
+    
+    def check_system_health(self):
+        """Check system health metrics"""
+        health_report = {
+            'timestamp': datetime.now().isoformat(),
+            'model': self.model_name,
+            'status': 'healthy',
+            'latency_ms': 150,
+            'uptime_hours': 24,
+            'error_rate': 0.01,
+        }
+        
+        if health_report['latency_ms'] > 1000 or health_report['error_rate'] > 0.05:
+            health_report['status'] = 'warning'
+        
+        print(f"✓ System Health: {health_report['status']}")
+        return health_report
+    
+    def generate_monitoring_report(self, output_path='monitoring/'):
+        """Generate comprehensive monitoring report"""
+        report = {
+            'generated_at': datetime.now().isoformat(),
+            'model_name': self.model_name,
+            'summary': 'Model monitoring report with drift detection, performance metrics, and system health'
+        }
+        
+        with open(f'{output_path}monitoring_report.json', 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        print(f"✓ Monitoring report saved to {output_path}")
+        return report
+
+if __name__ == '__main__':
+    monitor = ModelMonitoring()
+    monitor.check_data_drift('data/current.csv', 'data/baseline.csv')
+    monitor.check_model_performance('predictions.json')
+    monitor.check_system_health()
+    monitor.generate_monitoring_report()
+`,
             },
           ],
         },
@@ -88,18 +473,50 @@ export default function Projects() {
           name: 'Dockerfile',
           type: 'file' as const,
           language: 'dockerfile' as const,
-          content: `FROM python:3.10-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCMD ["python", "src/inference.py"]`,
+          content: `FROM python:3.10-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY data/ ./data/ 2>/dev/null || true
+COPY models/ ./models/ 2>/dev/null || true
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python", "src/03_train.py"]
+`,
+        },
+        {
+          id: 'requirements-sample',
+          name: 'requirements.txt',
+          type: 'file' as const,
+          language: 'text' as const,
+          content: `pandas>=1.3.0
+scikit-learn>=0.24.0
+numpy>=1.21.0
+flask>=2.0.0
+requests>=2.26.0
+python-dotenv>=0.19.0
+`,
         },
       ];
       setFileTree(sampleFiles);
       // Also save sample files to GlobalContext so they are immediately available to jobs
       if (!selectedProject.code || selectedProject.code.length === 0) {
-        const trainCode = { name: 'train.py', language: 'python' as const, content: `# Training script for ${selectedProject.name}\nimport pandas as pd\n# Add your training code here` };
-        const inferCode = { name: 'inference.py', language: 'python' as const, content: `# Inference script for ${selectedProject.name}\nimport pickle\n# Add your inference code here` };
-        const dockerCode = { name: 'Dockerfile', language: 'dockerfile' as const, content: `FROM python:3.10-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCMD ["python", "src/inference.py"]` };
-        global.addProjectCode(selectedProject.id, trainCode);
-        global.addProjectCode(selectedProject.id, inferCode);
-        global.addProjectCode(selectedProject.id, dockerCode);
+        const files = [
+          { name: '01_ingest.py', language: 'python' as const, content: sampleFiles[0].children?.[0].content || '' },
+          { name: '02_prepare.py', language: 'python' as const, content: sampleFiles[0].children?.[1].content || '' },
+          { name: '03_train.py', language: 'python' as const, content: sampleFiles[0].children?.[2].content || '' },
+          { name: '04_evaluate.py', language: 'python' as const, content: sampleFiles[0].children?.[3].content || '' },
+          { name: '05_deploy.py', language: 'python' as const, content: sampleFiles[0].children?.[4].content || '' },
+          { name: '06_monitor.py', language: 'python' as const, content: sampleFiles[0].children?.[5].content || '' },
+          { name: 'Dockerfile', language: 'dockerfile' as const, content: sampleFiles[1].content || '' },
+          { name: 'requirements.txt', language: 'text' as const, content: sampleFiles[2].content || '' },
+        ];
+        files.forEach(file => global.addProjectCode(selectedProject.id, file));
       }
     }
   }, [selectedProject?.id]);

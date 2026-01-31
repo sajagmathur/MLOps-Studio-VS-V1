@@ -112,6 +112,14 @@ const ManualApprovals: React.FC = () => {
     showNotification('✗ Approval rejected. Pipeline will be marked as failed.', 'error');
   };
 
+  const handleClearPendingApprovals = () => {
+    if (window.confirm('Are you sure you want to clear all pending approvals? This cannot be undone.')) {
+      setPendingApprovals([]);
+      localStorage.setItem('pending-pipeline-approvals', JSON.stringify([]));
+      showNotification('All pending approvals cleared', 'info');
+    }
+  };
+
   const handleDeleteHistory = (recordId: string) => {
     if (window.confirm('Delete this approval record?')) {
       const updated = approvalHistory.filter(r => r.id !== recordId);
@@ -130,7 +138,17 @@ const ManualApprovals: React.FC = () => {
 
       {/* Pending Approvals */}
       <div className="space-y-4">
-        <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>⏸ Awaiting Approval ({pendingApprovals.length})</h2>
+        <div className="flex items-center justify-between">
+          <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>⏸ Awaiting Approval ({pendingApprovals.length})</h2>
+          {pendingApprovals.length > 0 && (
+            <button
+              onClick={handleClearPendingApprovals}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition text-sm font-semibold"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
         
         {pendingApprovals.length === 0 ? (
           <div className={`p-8 rounded-lg text-center ${themeClasses.card(theme)}`}>
