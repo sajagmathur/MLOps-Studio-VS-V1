@@ -47,12 +47,36 @@ interface NotificationProviderProps {
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    // Load persisted notifications from localStorage on initialization
+    try {
+      const stored = localStorage.getItem('pending-notifications');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Filter out notifications older than 30 seconds
+        const now = Date.now();
+        return parsed.filter((n: any) => (now - n.timestamp) < 30000);
+      }
+    } catch (err) {
+      console.error('[NotificationContext] Failed to restore notifications:', err);
+    }
+    return [];
+  });
+  
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     // Load from localStorage on initialization
     const stored = localStorage.getItem('auditLogs');
     return stored ? JSON.parse(stored) : [];
   });
+
+  // Persist notifications to localStorage whenever they change
+  useEffect(() => {
+    const notificationsWithTimestamp = notifications.map(n => ({
+      ...n,
+      timestamp: Date.now()
+    }));
+    localStorage.setItem('pending-notifications', JSON.stringify(notificationsWithTimestamp));
+  }, [notifications]);
 
   // Persist audit logs to localStorage whenever they change
   useEffect(() => {

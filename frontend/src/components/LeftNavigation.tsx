@@ -100,9 +100,9 @@ const LeftNavigation: React.FC = () => {
       requiredRoles: ['admin', 'ml-engineer'],
     },
     {
-      id: 'manual-approval',
-      label: 'Manual Approval',
-      path: '/manual-approval',
+      id: 'manual-approvals',
+      label: 'Manual Approvals',
+      path: '/manual-approvals',
       icon: <CheckCircle size={20} />,
       requiredRoles: ['admin', 'prod-team', 'ml-engineer'],
     },

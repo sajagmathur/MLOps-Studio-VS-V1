@@ -392,18 +392,18 @@ const TopBarEnhanced: React.FC = () => {
 
             {showSupport && (
               <div className={`absolute right-0 top-12 w-48 ${theme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'} rounded-lg shadow-xl overflow-hidden`}>
-                <a href="#" className={`block px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                <button onClick={() => { navigate('/documentation'); setShowSupport(false); }} className={`block w-full text-left px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
                   📚 Documentation
-                </a>
-                <a href="#" className={`block px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                </button>
+                <button onClick={() => { navigate('/training'); setShowSupport(false); }} className={`block w-full text-left px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
                   🎓 Training
-                </a>
-                <a href="#" className={`block px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                </button>
+                <button onClick={() => { navigate('/support-contacts'); setShowSupport(false); }} className={`block w-full text-left px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
                   💬 Support Contacts
-                </a>
-                <a href="#" className={`block px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                </button>
+                <button onClick={() => { navigate('/send-feedback'); setShowSupport(false); }} className={`block w-full text-left px-4 py-2 hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}`}>
                   📧 Send Feedback
-                </a>
+                </button>
               </div>
             )}
           </div>

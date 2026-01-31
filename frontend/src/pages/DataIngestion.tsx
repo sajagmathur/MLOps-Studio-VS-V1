@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Play, Upload, Database, FileUp, Cloud, Network, Folder, Download, Check, AlertCircle, Loader } from 'lucide-react';
+import { Plus, Trash2, Play, Upload, Database, FileUp, Cloud, Network, Folder, Download, Check, AlertCircle, Loader, Code as CodeIcon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useNotification } from '../hooks/useNotification';
@@ -24,6 +24,9 @@ export default function DataIngestion() {
   const [uploadedFile, setUploadedFile] = useState<{name: string; path: string; size: number; type: string} | null>(null);
 
   const selectedJob = selectedJobId ? global.getIngestionJob(selectedJobId) : null;
+  const filteredJobs = formData.projectId 
+    ? global.ingestionJobs.filter(j => j.projectId === formData.projectId)
+    : global.ingestionJobs;
 
   const handleCreateJob = () => {
     if (!formData.name.trim() || !formData.projectId) {
@@ -37,6 +40,7 @@ export default function DataIngestion() {
       dataSource: formData.dataSource,
       codeId: selectedProjectCodeId || undefined,
       sourceConfig: formData.sourceConfig,
+      uploadedFile: uploadedFile || undefined,
       status: 'created',
     });
 
@@ -66,6 +70,7 @@ export default function DataIngestion() {
   const handleDeleteJob = (jobId: string) => {
     if (confirm('Delete this job?')) {
       global.deleteIngestionJob(jobId);
+      if (selectedJobId === jobId) setSelectedJobId(null);
       showNotification('Job deleted', 'success');
     }
   };
@@ -96,10 +101,20 @@ export default function DataIngestion() {
     return project?.code || [];
   };
 
+  const getSourceIcon = (source: string) => {
+    const option = sourceOptions.find(o => o.value === source);
+    return option?.icon || FileUp;
+  };
+
+  const getStatusColor = (status: string) => {
+    return status === 'completed' ? 'bg-green-500/20 text-green-400' :
+           status === 'running' ? 'bg-blue-500/20 text-blue-400' :
+           status === 'failed' ? 'bg-red-500/20 text-red-400' :
+           'bg-slate-500/20 text-slate-400';
+  };
+
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Data Ingestion' }]} />
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -107,223 +122,212 @@ export default function DataIngestion() {
           <p className={`${themeClasses.textSecondary(theme)} mt-1`}>Create and manage data ingestion jobs</p>
         </div>
         <button
-          onClick={() => setShowJobModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
+          onClick={() => {
+            setShowJobModal(true);
+            setFormData({ name: '', projectId: '', dataSource: 'csv', sourceConfig: {} });
+            setSelectedProjectCodeId(null);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           New Ingestion Job
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className={`p-4 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} rounded-lg border ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Total Jobs</p>
-          <p className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>{global.ingestionJobs.length}</p>
-        </div>
-        <div className={`p-4 ${theme === 'dark' ? 'bg-green-500/10' : 'bg-green-50'} rounded-lg border ${theme === 'dark' ? 'border-green-400/30' : 'border-green-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Completed</p>
-          <p className="text-2xl font-bold text-green-400">{global.ingestionJobs.filter(j => j.status === 'completed').length}</p>
-        </div>
-        <div className={`p-4 ${theme === 'dark' ? 'bg-yellow-500/10' : 'bg-yellow-50'} rounded-lg border ${theme === 'dark' ? 'border-yellow-400/30' : 'border-yellow-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Running</p>
-          <p className="text-2xl font-bold text-yellow-400">{global.ingestionJobs.filter(j => j.status === 'running').length}</p>
-        </div>
-        <div className={`p-4 ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} rounded-lg border ${theme === 'dark' ? 'border-blue-400/30' : 'border-blue-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Created</p>
-          <p className="text-2xl font-bold text-blue-400">{global.ingestionJobs.filter(j => j.status === 'created').length}</p>
-        </div>
-      </div>
-
-      {/* Jobs List */}
-      <div className={`${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'} rounded-lg border overflow-hidden`}>
-        {global.ingestionJobs.length === 0 ? (
-          <div className="p-12 text-center">
-            <AlertCircle size={48} className={`mx-auto mb-4 ${themeClasses.textSecondary(theme)}`} />
-            <p className={`${themeClasses.textSecondary(theme)} mb-4`}>No ingestion jobs yet</p>
-            <button
-              onClick={() => setShowJobModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
-            >
-              Create your first job
-            </button>
+      {/* Main Grid */}
+      <div className="grid grid-cols-3 gap-4 h-[600px]">
+        {/* Jobs List */}
+        <div className={`${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-300'} border rounded-lg overflow-hidden flex flex-col`}>
+          <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'} font-semibold`}>
+            Jobs
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className={`${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-200 border-slate-300'} border-b`}>
-                <tr>
-                  <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary(theme)}`}>Name</th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary(theme)}`}>Project</th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary(theme)}`}>Source</th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary(theme)}`}>Status</th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary(theme)}`}>Output</th>
-                  <th className={`px-6 py-3 text-right text-xs font-medium ${themeClasses.textSecondary(theme)}`}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className={`${theme === 'dark' ? 'divide-white/10' : 'divide-slate-300'} divide-y`}>
-                {global.ingestionJobs.map(job => {
-                  const project = global.getProject(job.projectId);
-                  return (
-                    <tr key={job.id} className={`hover:${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} transition cursor-pointer`} onClick={() => setSelectedJobId(job.id)}>
-                      <td className={`px-6 py-4 font-medium ${themeClasses.textPrimary(theme)}`}>{job.name}</td>
-                      <td className={`px-6 py-4 ${themeClasses.textSecondary(theme)}`}>{project?.name || 'Unknown'}</td>
-                      <td className={`px-6 py-4 ${themeClasses.textSecondary(theme)}`}>
-                        {sourceOptions.find(s => s.value === job.dataSource)?.label}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                          job.status === 'completed' ? 'bg-green-500/20 text-green-300' :
-                          job.status === 'running' ? 'bg-yellow-500/20 text-yellow-300 flex items-center gap-1' :
-                          'bg-blue-500/20 text-blue-300'
-                        }`}>
-                          {job.status === 'running' && <Loader size={12} className="animate-spin" />}
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className={`px-6 py-4 ${themeClasses.textSecondary(theme)} text-sm`}>
-                        {job.outputPath ? (
-                          <div>
-                            <p>{job.outputShape?.rows?.toLocaleString()} rows × {job.outputShape?.columns} cols</p>
-                            <p className="text-xs">{job.outputPath}</p>
-                          </div>
-                        ) : '-'}
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRunJob(job.id);
-                          }}
-                          disabled={job.status === 'running'}
-                          className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition ${
-                            job.status === 'running'
-                              ? 'opacity-50 cursor-not-allowed bg-gray-500/20 text-gray-300'
-                              : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300'
-                          }`}
-                        >
-                          <Play size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteJob(job.id);
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-300 text-xs font-medium transition"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Job Details */}
-      {selectedJob && (
-        <div className={`${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'} rounded-lg border p-6 space-y-6`}>
-          <div className="flex items-center justify-between">
-            <h2 className={`text-xl font-bold ${themeClasses.textPrimary(theme)}`}>{selectedJob.name}</h2>
-            <button
-              onClick={() => setSelectedJobId(null)}
-              className={`px-4 py-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} rounded-lg transition`}
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className={`text-sm font-medium ${themeClasses.textSecondary(theme)} mb-1`}>Project</p>
-              <p className={themeClasses.textPrimary(theme)}>{global.getProject(selectedJob.projectId)?.name}</p>
-            </div>
-            <div>
-              <p className={`text-sm font-medium ${themeClasses.textSecondary(theme)} mb-1`}>Data Source</p>
-              <p className={themeClasses.textPrimary(theme)}>{selectedJob.dataSource}</p>
-            </div>
-            <div>
-              <p className={`text-sm font-medium ${themeClasses.textSecondary(theme)} mb-1`}>Status</p>
-              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                selectedJob.status === 'completed' ? 'bg-green-500/20 text-green-300' :
-                selectedJob.status === 'running' ? 'bg-yellow-500/20 text-yellow-300' :
-                'bg-blue-500/20 text-blue-300'
-              }`}>
-                {selectedJob.status.charAt(0).toUpperCase() + selectedJob.status.slice(1)}
-              </span>
-            </div>
-            {selectedJob.lastRun && (
-              <div>
-                <p className={`text-sm font-medium ${themeClasses.textSecondary(theme)} mb-1`}>Last Run</p>
-                <p className={themeClasses.textPrimary(theme)}>{new Date(selectedJob.lastRun).toLocaleString()}</p>
+          <div className={`flex-1 overflow-y-auto space-y-2 p-3`}>
+            {global.ingestionJobs.length === 0 ? (
+              <div className={`text-center py-8 ${themeClasses.textSecondary(theme)}`}>
+                No jobs created yet
               </div>
+            ) : (
+              global.ingestionJobs.map(job => (
+                <div
+                  key={job.id}
+                  onClick={() => setSelectedJobId(job.id)}
+                  className={`p-3 rounded-lg cursor-pointer transition-all ${
+                    selectedJobId === job.id
+                      ? `${theme === 'dark' ? 'bg-blue-900/50 border-blue-500' : 'bg-blue-100 border-blue-500'} border-2`
+                      : `${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} border border-transparent`
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={`p-2 rounded ${getStatusColor(job.status)}`}>
+                      {job.status === 'running' ? (
+                        <Loader size={14} className="animate-spin" />
+                      ) : job.status === 'completed' ? (
+                        <Check size={14} />
+                      ) : (
+                        <AlertCircle size={14} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold text-sm truncate ${themeClasses.textPrimary(theme)}`}>{job.name}</p>
+                      <p className={`text-xs ${themeClasses.textSecondary(theme)} truncate`}>{global.getProject(job.projectId)?.name || 'Unknown'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
+        </div>
 
-          {selectedJob.outputPath && (
-            <div className={`p-4 ${theme === 'dark' ? 'bg-green-500/10 border-green-400/30' : 'bg-green-50 border-green-300'} rounded border`}>
-              <p className="text-sm font-semibold text-green-400 mb-2 flex items-center gap-2">
-                <Check size={16} />
-                Output Available
-              </p>
-              <div className={`text-sm ${themeClasses.textSecondary(theme)} space-y-1`}>
-                <p>Rows: {selectedJob.outputShape?.rows?.toLocaleString()}</p>
-                <p>Columns: {selectedJob.outputShape?.columns}</p>
-                <p>Path: {selectedJob.outputPath}</p>
+        {/* Job Details */}
+        <div className={`col-span-2 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-300'} border rounded-lg overflow-hidden flex flex-col`}>
+          {selectedJob ? (
+            <>
+              <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded ${getStatusColor(selectedJob.status)}`}>
+                      {React.createElement(getSourceIcon(selectedJob.dataSource), { size: 18 })}
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold text-lg ${themeClasses.textPrimary(theme)}`}>{selectedJob.name}</h3>
+                      <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Project: {global.getProject(selectedJob.projectId)?.name}</p>
+                    </div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(selectedJob.status)}`}>
+                    {selectedJob.status}
+                  </span>
+                </div>
               </div>
+
+              <div className={`flex-1 overflow-y-auto p-4 space-y-6`}>
+                {/* Source Information */}
+                <div>
+                  <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Data Source</h4>
+                  <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3 space-y-2`}>
+                    <div>
+                      <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Source Type</p>
+                      <p className={`${themeClasses.textPrimary(theme)} font-semibold capitalize`}>{selectedJob.dataSource}</p>
+                    </div>
+                    {selectedJob.uploadedFile && (
+                      <div>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>File</p>
+                        <p className={`${themeClasses.textPrimary(theme)} text-sm`}>{selectedJob.uploadedFile.name}</p>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>{(selectedJob.uploadedFile.size / 1024).toFixed(2)} KB</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Code Information */}
+                {selectedJob.codeId && (
+                  <div>
+                    <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Associated Code</h4>
+                    <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3`}>
+                      {(() => {
+                        const project = global.getProject(selectedJob.projectId);
+                        const code = project?.code.find(c => c.id === selectedJob.codeId);
+                        return code ? (
+                          <div>
+                            <p className={`${themeClasses.textPrimary(theme)} font-semibold text-sm`}>{code.name}</p>
+                            <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>{code.language}</p>
+                          </div>
+                        ) : (
+                          <p className={`${themeClasses.textSecondary(theme)} text-sm`}>Code not found</p>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Output Data */}
+                {selectedJob.status === 'completed' && selectedJob.outputShape && (
+                  <div>
+                    <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Output Data</h4>
+                    <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3 space-y-2`}>
+                      <div>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Shape</p>
+                        <p className={`${themeClasses.textPrimary(theme)} font-semibold`}>{selectedJob.outputShape.rows.toLocaleString()} rows × {selectedJob.outputShape.columns} columns</p>
+                      </div>
+                      {selectedJob.outputColumns && (
+                        <div>
+                          <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-2`}>Columns</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedJob.outputColumns.map((col, i) => (
+                              <span key={i} className={`text-xs px-2 py-1 ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-300'} rounded`}>
+                                {col}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Path</p>
+                        <p className={`${themeClasses.textPrimary(theme)} text-xs font-mono`}>{selectedJob.outputPath}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => handleRunJob(selectedJob.id)}
+                    disabled={selectedJob.status === 'running'}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white rounded-lg text-sm transition"
+                  >
+                    <Play size={14} />
+                    {selectedJob.status === 'running' ? 'Running...' : selectedJob.status === 'completed' ? 'Rerun Job' : 'Run Job'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteJob(selectedJob.id)}
+                    className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm transition"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className={`flex-1 flex items-center justify-center ${themeClasses.textSecondary(theme)}`}>
+              Select a job to view details
             </div>
           )}
-
-          {selectedJob.codeId && global.getProject(selectedJob.projectId)?.code && (
-            <CodeTerminal
-              code={global.getProject(selectedJob.projectId)?.code.find(c => c.id === selectedJob.codeId)?.content}
-              language="python"
-              title="Ingestion Code"
-              height="h-40"
-            />
-          )}
         </div>
-      )}
+      </div>
 
-      {/* Create Job Modal */}
+      {/* Modal */}
       {showJobModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-8 w-full max-w-2xl border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'} max-h-[90vh] overflow-y-auto`}>
-            <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)} mb-6`}>Create Data Ingestion Job</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
+            <div className={`p-6 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-300'} sticky top-0`}>
+              <h2 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>Create Data Ingestion Job</h2>
+            </div>
 
-            <div className="space-y-6">
-              {/* Basic Info */}
+            <div className="p-6 space-y-6">
+              {/* Job Name */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Job Name *</label>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Job Name *</label>
                 <input
                   type="text"
+                  placeholder="e.g., Load Customer Data"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
-                  placeholder="e.g., Production Data Sync"
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                 />
               </div>
 
               {/* Project Selection */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Select Project *</label>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Project *</label>
                 <select
                   value={formData.projectId}
-                  onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
+                  onChange={(e) => {
+                    setFormData({ ...formData, projectId: e.target.value });
+                    setSelectedProjectCodeId(null);
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                 >
-                  <option value="">Choose a project...</option>
+                  <option value="">Select a project...</option>
                   {global.projects.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -332,106 +336,87 @@ export default function DataIngestion() {
 
               {/* Data Source */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-3`}>Data Source *</label>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                  {sourceOptions.map(source => {
-                    const Icon = source.icon;
+                <label className={`block text-sm font-semibold mb-3 ${themeClasses.textPrimary(theme)}`}>Data Source *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {sourceOptions.map(option => {
+                    const Icon = option.icon;
                     return (
                       <button
-                        key={source.value}
-                        onClick={() => {
-                          setFormData({ ...formData, dataSource: source.value });
-                          setUploadedFile(null);
-                        }}
-                        className={`p-3 rounded-lg border transition-all flex flex-col items-center gap-2 text-xs font-medium ${
-                          formData.dataSource === source.value
-                            ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                            : theme === 'dark'
-                            ? 'border-slate-700 hover:border-slate-600 text-slate-400'
-                            : 'border-slate-300 hover:border-slate-400 text-slate-600'
+                        key={option.value}
+                        onClick={() => setFormData({ ...formData, dataSource: option.value })}
+                        className={`p-3 rounded-lg border-2 transition flex items-center gap-2 ${
+                          formData.dataSource === option.value
+                            ? `${theme === 'dark' ? 'bg-blue-900/50 border-blue-500' : 'bg-blue-100 border-blue-500'}`
+                            : `${theme === 'dark' ? 'bg-slate-900 border-slate-700 hover:border-slate-600' : 'bg-slate-100 border-slate-300 hover:border-slate-400'}`
                         }`}
                       >
-                        <Icon size={20} />
-                        {source.label}
+                        <Icon size={16} />
+                        <span className="text-sm">{option.label}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* File Upload for Desktop */}
+              {/* File Upload for Desktop Source */}
               {formData.dataSource === 'desktop' && (
                 <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Upload File</label>
-                  <label className={`border-2 border-dashed ${theme === 'dark' ? 'border-slate-700 hover:border-blue-500' : 'border-slate-300 hover:border-blue-500'} rounded-lg p-6 cursor-pointer transition-colors text-center`}>
+                  <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Upload File</label>
+                  <div className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${
+                    theme === 'dark' ? 'border-slate-600 hover:border-blue-500' : 'border-slate-300 hover:border-blue-500'
+                  }`}>
                     <input
                       type="file"
                       onChange={handleFileUpload}
                       className="hidden"
-                      accept=".csv,.xlsx,.json,.parquet"
+                      id="file-upload"
                     />
-                    {uploadedFile ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Check size={20} className="text-green-400" />
-                        <div className="text-left">
-                          <p className="font-medium text-green-400">{uploadedFile.name}</p>
-                          <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>
-                            {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={themeClasses.textSecondary(theme)}>
-                        <Upload size={24} className="mx-auto mb-2" />
-                        <p>Click to upload or drag and drop</p>
-                        <p className="text-xs mt-1">CSV, XLSX, JSON, Parquet</p>
-                      </div>
-                    )}
-                  </label>
+                    <label htmlFor="file-upload" className="cursor-pointer block">
+                      <Upload size={32} className="mx-auto mb-2 opacity-50" />
+                      <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Click to upload or drag and drop</p>
+                      {uploadedFile && (
+                        <p className="text-sm text-green-400 mt-2">✓ {uploadedFile.name}</p>
+                      )}
+                    </label>
+                  </div>
                 </div>
               )}
 
               {/* Code Selection */}
               {formData.projectId && (
                 <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Select Code (Optional)</label>
+                  <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Ingestion Code (Optional)</label>
                   <select
                     value={selectedProjectCodeId || ''}
                     onChange={(e) => setSelectedProjectCodeId(e.target.value || null)}
-                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-900 border-slate-700 text-white'
-                        : 'bg-white border-slate-300 text-black'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                   >
                     <option value="">No code selected</option>
                     {getProjectCodes(formData.projectId).map(code => (
-                      <option key={code.id} value={code.id}>{code.name}</option>
+                      <option key={code.id} value={code.id}>
+                        {code.name} ({code.language})
+                      </option>
                     ))}
                   </select>
+                  {getProjectCodes(formData.projectId).length === 0 && (
+                    <p className={`text-xs ${themeClasses.textSecondary(theme)} mt-2`}>
+                      No code files found in project. Create files in the Projects workspace first.
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 pt-6 border-t border-slate-700">
+              <div className="flex gap-2 pt-4">
                 <button
-                  onClick={() => {
-                    setShowJobModal(false);
-                    setFormData({ name: '', projectId: '', dataSource: 'csv', sourceConfig: {} });
-                    setSelectedProjectCodeId(null);
-                    setUploadedFile(null);
-                  }}
-                  className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-700 hover:bg-slate-600'
-                      : 'bg-slate-300 hover:bg-slate-400'
-                  }`}
+                  onClick={() => setShowJobModal(false)}
+                  className={`flex-1 px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} transition`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateJob}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
                 >
                   Create Job
                 </button>
