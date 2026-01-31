@@ -211,7 +211,16 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'mlops_studio_state';
 
-const initialState = {
+const initialState: {
+  projects: Project[];
+  ingestionJobs: IngestionJob[];
+  preparationJobs: PreparationJob[];
+  registryModels: RegistryModel[];
+  deploymentJobs: DeploymentJob[];
+  inferencingJobs: InferencingJob[];
+  monitoringJobs: MonitoringJob[];
+  pipelineJobs: PipelineJob[];
+} = {
   projects: [],
   ingestionJobs: [],
   preparationJobs: [],
