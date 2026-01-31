@@ -61,30 +61,54 @@ const ManualApprovals: React.FC = () => {
   const handleApprove = (approval: PendingApproval) => {
     console.log('[ManualApprovals] Approving:', approval.id);
     
-    // Update pending approvals with approved status
-    const updated = pendingApprovals.map(a =>
-      a.id === approval.id ? { ...a, status: 'approved' as const } : a
-    );
+    // Remove from pending approvals
+    const updatedPending = pendingApprovals.filter(a => a.id !== approval.id);
+    setPendingApprovals(updatedPending);
+    localStorage.setItem('pending-pipeline-approvals', JSON.stringify(updatedPending));
     
-    setPendingApprovals(updated);
-    localStorage.setItem('pending-pipeline-approvals', JSON.stringify(updated));
-    console.log('[ManualApprovals] Updated localStorage with approved status');
+    // Add to approval history
+    const historyEntry: ApprovalHistory = {
+      id: approval.id,
+      pipelineId: approval.pipelineId,
+      pipelineName: approval.pipelineName,
+      jobName: approval.jobName,
+      status: 'approved',
+      requestedAt: approval.requestedAt,
+      decidedAt: new Date().toISOString(),
+    };
     
+    const updatedHistory = [...approvalHistory, historyEntry];
+    setApprovalHistory(updatedHistory);
+    localStorage.setItem('approval-history', JSON.stringify(updatedHistory));
+    
+    console.log('[ManualApprovals] Moved approval to history:', approval.id);
     showNotification('✓ Approval granted! Pipeline will resume...', 'success');
   };
 
   const handleReject = (approval: PendingApproval) => {
     console.log('[ManualApprovals] Rejecting:', approval.id);
     
-    // Update pending approvals with rejected status
-    const updated = pendingApprovals.map(a =>
-      a.id === approval.id ? { ...a, status: 'rejected' as const } : a
-    );
+    // Remove from pending approvals
+    const updatedPending = pendingApprovals.filter(a => a.id !== approval.id);
+    setPendingApprovals(updatedPending);
+    localStorage.setItem('pending-pipeline-approvals', JSON.stringify(updatedPending));
     
-    setPendingApprovals(updated);
-    localStorage.setItem('pending-pipeline-approvals', JSON.stringify(updated));
-    console.log('[ManualApprovals] Updated localStorage with rejected status');
+    // Add to approval history
+    const historyEntry: ApprovalHistory = {
+      id: approval.id,
+      pipelineId: approval.pipelineId,
+      pipelineName: approval.pipelineName,
+      jobName: approval.jobName,
+      status: 'rejected',
+      requestedAt: approval.requestedAt,
+      decidedAt: new Date().toISOString(),
+    };
     
+    const updatedHistory = [...approvalHistory, historyEntry];
+    setApprovalHistory(updatedHistory);
+    localStorage.setItem('approval-history', JSON.stringify(updatedHistory));
+    
+    console.log('[ManualApprovals] Moved approval to history:', approval.id);
     showNotification('✗ Approval rejected. Pipeline will be marked as failed.', 'error');
   };
 
