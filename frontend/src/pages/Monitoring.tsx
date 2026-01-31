@@ -1,355 +1,501 @@
-import React, { useEffect, useState } from 'react';
-import { AlertTriangle, TrendingDown, Activity, CheckCircle, Plus, Trash2, Loader } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, Play, AlertCircle, Loader, Check, Activity, Database, Clock, BarChart3 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { useGlobal } from '../contexts/GlobalContext';
+import { useNotification } from '../hooks/useNotification';
+import { CodeTerminal } from '../components/CodeTerminal';
+import { themeClasses } from '../utils/themeClasses';
 
-interface MonitoringJob {
-  id: string;
-  name: string;
-  status: 'pass' | 'fail' | 'warning';
-  ksStatistic: number;
-  psiScore: number;
-  dataPoints: number;
-}
-
-const Monitoring: React.FC = () => {
+export default function ModelMonitoring() {
   const { theme } = useTheme();
-  const [driftMetrics, setDriftMetrics] = useState<any>(null);
-  const [monitoringJobs, setMonitoringJobs] = useState<MonitoringJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const global = useGlobal();
+  const { showNotification } = useNotification();
+
   const [showJobModal, setShowJobModal] = useState(false);
-  const [jobName, setJobName] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    projectId: '',
+    modelId: '',
+    inputDatasetId: '',
+    frequency: 'daily' as 'on-demand' | 'hourly' | 'daily' | 'weekly',
+  });
+  const [selectedCodeId, setSelectedCodeId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Initialize monitoring jobs and drift metrics
-    setMonitoringJobs([
-      {
-        id: '1',
-        name: 'Production Model',
-        status: 'warning',
-        ksStatistic: 0.34,
-        psiScore: 0.156,
-        dataPoints: 50000,
-      },
-      {
-        id: '2',
-        name: 'Staging Model',
-        status: 'pass',
-        ksStatistic: 0.12,
-        psiScore: 0.045,
-        dataPoints: 25000,
-      },
-    ]);
+  const selectedJob = selectedJobId ? global.getMonitoringJob(selectedJobId) : null;
 
-    setDriftMetrics({
-      dataDrift: {
-        detected: true,
-        score: 15.3,
-        features: ['age', 'income', 'credit_score'],
-        threshold: 10,
+  const handleCreateJob = () => {
+    if (!formData.name.trim() || !formData.projectId || !formData.modelId || !formData.inputDatasetId) {
+      showNotification('All fields are required', 'warning');
+      return;
+    }
+
+    const newJob = global.createMonitoringJob({
+      name: formData.name,
+      projectId: formData.projectId,
+      modelId: formData.modelId,
+      codeId: selectedCodeId || undefined,
+      inputDatasetId: formData.inputDatasetId,
+      metrics: {
+        dataDrift: Math.random() * 0.3,
+        modelDrift: Math.random() * 0.2,
+        performanceDegradation: Math.random() * 0.15,
+        lastChecked: new Date().toISOString(),
       },
-      conceptDrift: {
-        detected: false,
-        score: 4.2,
-        threshold: 8,
-      },
-      predictionDrift: {
-        detected: true,
-        score: 12.1,
-        threshold: 10,
-      },
-      timeline: [
-        { time: '00:00', dataDrift: 2.3, conceptDrift: 1.2, predictionDrift: 0.8 },
-        { time: '04:00', dataDrift: 3.1, conceptDrift: 1.5, predictionDrift: 1.2 },
-        { time: '08:00', dataDrift: 5.2, conceptDrift: 2.3, predictionDrift: 2.1 },
-        { time: '12:00', dataDrift: 8.1, conceptDrift: 3.5, predictionDrift: 4.3 },
-        { time: '16:00', dataDrift: 12.4, conceptDrift: 4.2, predictionDrift: 8.5 },
-        { time: '20:00', dataDrift: 15.3, conceptDrift: 4.2, predictionDrift: 12.1 },
-      ],
-      ksData: [
-        { threshold: 0.1, models: 2 },
-        { threshold: 0.2, models: 1 },
-        { threshold: 0.3, models: 1 },
-        { threshold: 0.4, models: 0 },
-      ],
-      psiData: [
-        { threshold: 0.05, models: 2 },
-        { threshold: 0.1, models: 1 },
-        { threshold: 0.2, models: 1 },
-        { threshold: 0.3, models: 0 },
-      ],
+      status: 'created',
     });
-    setLoading(false);
-  }, []);
 
-  const handleAddJob = () => {
-    if (!jobName.trim()) return;
-    const newJob: MonitoringJob = {
-      id: Date.now().toString(),
-      name: jobName,
-      status: 'pass',
-      ksStatistic: Math.random() * 0.5,
-      psiScore: Math.random() * 0.2,
-      dataPoints: Math.floor(Math.random() * 100000) + 10000,
-    };
-    setMonitoringJobs([...monitoringJobs, newJob]);
-    setJobName('');
+    showNotification('Monitoring job created', 'success');
     setShowJobModal(false);
+    setFormData({ name: '', projectId: '', modelId: '', inputDatasetId: '', frequency: 'daily' });
+    setSelectedCodeId(null);
   };
 
-  const handleDeleteJob = (id: string) => {
-    setMonitoringJobs(monitoringJobs.filter(j => j.id !== id));
+  const handleRunJob = (jobId: string) => {
+    global.updateMonitoringJob(jobId, { status: 'running' });
+    
+    setTimeout(() => {
+      global.updateMonitoringJob(jobId, {
+        status: 'completed',
+        metrics: {
+          dataDrift: Math.random() * 0.3,
+          modelDrift: Math.random() * 0.2,
+          performanceDegradation: Math.random() * 0.15,
+          lastChecked: new Date().toISOString(),
+        },
+        lastRun: new Date().toISOString(),
+      });
+      showNotification('Monitoring check completed', 'success');
+    }, 2000);
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    if (confirm('Delete this job?')) {
+      global.deleteMonitoringJob(jobId);
+      if (selectedJobId === jobId) setSelectedJobId(null);
+      showNotification('Job deleted', 'success');
+    }
+  };
+
+  const getProjectCodes = (projectId: string) => {
+    const project = global.getProject(projectId);
+    return project?.code || [];
+  };
+
+  const getAvailableModels = (projectId: string) => {
+    return global.registryModels.filter(m => m.projectId === projectId && m.stage === 'production');
+  };
+
+  const getAvailableDatasets = (projectId: string) => {
+    return global.preparationJobs.filter(j => j.projectId === projectId && j.status === 'completed');
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'fail' ? 'bg-red-600/10 border-red-500 text-red-400' :
-           status === 'warning' ? 'bg-yellow-600/10 border-yellow-500 text-yellow-400' :
-           'bg-green-600/10 border-green-500 text-green-400';
+    return status === 'completed' ? 'bg-green-500/20 text-green-400' :
+           status === 'running' ? 'bg-blue-500/20 text-blue-400' :
+           status === 'failed' ? 'bg-red-500/20 text-red-400' :
+           'bg-slate-500/20 text-slate-400';
   };
 
-  const getStatusIcon = (status: string) => {
-    return status === 'fail' ? <AlertTriangle size={16} /> :
-           status === 'warning' ? <AlertTriangle size={16} /> :
-           <CheckCircle size={16} />;
+  const getDriftSeverity = (value: number) => {
+    if (value > 0.25) return { color: 'text-red-400', label: 'High' };
+    if (value > 0.15) return { color: 'text-yellow-400', label: 'Medium' };
+    return { color: 'text-green-400', label: 'Low' };
   };
-
-  if (!driftMetrics || loading) return <div className="text-white p-4">Loading...</div>;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Model Monitoring</h1>
-          <p className="text-white/60 text-sm mt-1">Monitor model drift, performance, and job health</p>
+          <h1 className={`text-3xl font-bold ${themeClasses.textPrimary(theme)}`}>Model Monitoring</h1>
+          <p className={`${themeClasses.textSecondary(theme)} mt-1`}>Monitor model performance and data drift</p>
         </div>
         <button
-          onClick={() => setShowJobModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition text-white font-medium"
+          onClick={() => {
+            setShowJobModal(true);
+            setFormData({ name: '', projectId: '', modelId: '', inputDatasetId: '', frequency: 'daily' });
+            setSelectedCodeId(null);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
         >
-          <Plus size={16} />
-          New Job
+          <Plus size={18} />
+          New Monitoring Job
         </button>
       </div>
 
-      {/* Monitoring Jobs Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-          <p className="text-white/70 text-xs font-medium mb-1">Monitoring Jobs</p>
-          <p className="text-2xl font-bold text-white">{monitoringJobs.length}</p>
-        </div>
-        <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-          <p className="text-white/70 text-xs font-medium mb-1">Pass</p>
-          <p className="text-2xl font-bold text-green-400">{monitoringJobs.filter(j => j.status === 'pass').length}</p>
-        </div>
-        <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-          <p className="text-white/70 text-xs font-medium mb-1">Warning</p>
-          <p className="text-2xl font-bold text-yellow-400">{monitoringJobs.filter(j => j.status === 'warning').length}</p>
-        </div>
-        <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-          <p className="text-white/70 text-xs font-medium mb-1">Fail</p>
-          <p className="text-2xl font-bold text-red-400">{monitoringJobs.filter(j => j.status === 'fail').length}</p>
-        </div>
-      </div>
-
-      {/* Monitoring Jobs Dashboard */}
-      <div className="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <h2 className="text-lg font-semibold text-white">Monitoring Jobs</h2>
-        </div>
-        {monitoringJobs.length === 0 ? (
-          <div className="p-8 text-center text-white/60">
-            <p>No monitoring jobs. Create one to get started.</p>
+      {/* Main Grid */}
+      <div className="grid grid-cols-3 gap-4 h-[600px]">
+        {/* Jobs List */}
+        <div className={`${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-300'} border rounded-lg overflow-hidden flex flex-col`}>
+          <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'} font-semibold`}>
+            Monitoring Jobs
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/5 border-b border-white/10">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white/70">Job Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white/70">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white/70">KS Statistic</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white/70">PSI Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-white/70">Data Points</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-white/70">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {monitoringJobs.map(job => (
-                  <tr key={job.id} className="hover:bg-white/5 transition">
-                    <td className="px-6 py-4">
-                      <p className="text-white font-medium">{job.name}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${getStatusColor(job.status)}`}>
-                        {getStatusIcon(job.status)}
-                        {job.status}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-white/70 text-sm">{job.ksStatistic.toFixed(2)}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-white/70 text-sm">{job.psiScore.toFixed(3)}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-white/70 text-sm">{job.dataPoints.toLocaleString()}</span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleDeleteJob(job.id)}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-300 text-xs font-medium transition"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* KS and PSI Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white/5 rounded-lg border border-white/10 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Kolmogorov-Smirnov (KS) Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={driftMetrics.ksData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="threshold" stroke="rgba(255,255,255,0.5)" />
-              <YAxis stroke="rgba(255,255,255,0.5)" />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)' }}
-                labelStyle={{ color: '#fff' }}
-              />
-              <Bar dataKey="models" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white/5 rounded-lg border border-white/10 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Population Stability Index (PSI)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={driftMetrics.psiData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="threshold" stroke="rgba(255,255,255,0.5)" />
-              <YAxis stroke="rgba(255,255,255,0.5)" />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)' }}
-                labelStyle={{ color: '#fff' }}
-              />
-              <Bar dataKey="models" fill="#8b5cf6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Drift Alert Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`rounded-lg p-6 border ${driftMetrics.dataDrift.detected ? 'bg-red-600/10 border-red-500' : 'bg-green-600/10 border-green-500'}`}>
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="font-semibold text-white">Data Drift</h3>
-            {driftMetrics.dataDrift.detected ? (
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+          <div className={`flex-1 overflow-y-auto space-y-2 p-3`}>
+            {global.monitoringJobs.length === 0 ? (
+              <div className={`text-center py-8 ${themeClasses.textSecondary(theme)}`}>
+                No jobs created yet
+              </div>
             ) : (
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              global.monitoringJobs.map(job => (
+                <div
+                  key={job.id}
+                  onClick={() => setSelectedJobId(job.id)}
+                  className={`p-3 rounded-lg cursor-pointer transition-all ${
+                    selectedJobId === job.id
+                      ? `${theme === 'dark' ? 'bg-blue-900/50 border-blue-500' : 'bg-blue-100 border-blue-500'} border-2`
+                      : `${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} border border-transparent`
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={`p-2 rounded ${getStatusColor(job.status)}`}>
+                      {job.status === 'running' ? (
+                        <Loader size={14} className="animate-spin" />
+                      ) : job.status === 'completed' ? (
+                        <Check size={14} />
+                      ) : (
+                        <AlertCircle size={14} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold text-sm truncate ${themeClasses.textPrimary(theme)}`}>{job.name}</p>
+                      <p className={`text-xs ${themeClasses.textSecondary(theme)} truncate`}>{global.getProject(job.projectId)?.name}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-          <p className="text-2xl font-bold mb-1 text-white">{driftMetrics.dataDrift.score.toFixed(1)}%</p>
-          <p className="text-sm text-white/60 mb-3">Threshold: {driftMetrics.dataDrift.threshold}%</p>
-          {driftMetrics.dataDrift.detected && (
-            <div>
-              <p className="text-xs font-medium mb-2 text-white/70">Affected Features:</p>
-              <div className="space-y-1">
-                {driftMetrics.dataDrift.features.map((f: string) => (
-                  <p key={f} className="text-xs text-white/50">• {f}</p>
-                ))}
+        </div>
+
+        {/* Job Details */}
+        <div className={`col-span-2 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-300'} border rounded-lg overflow-hidden flex flex-col`}>
+          {selectedJob ? (
+            <>
+              <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded ${getStatusColor(selectedJob.status)}`}>
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold text-lg ${themeClasses.textPrimary(theme)}`}>{selectedJob.name}</h3>
+                      <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Project: {global.getProject(selectedJob.projectId)?.name}</p>
+                    </div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(selectedJob.status)}`}>
+                    {selectedJob.status}
+                  </span>
+                </div>
               </div>
+
+              <div className={`flex-1 overflow-y-auto p-4 space-y-6`}>
+                {/* Model Information */}
+                <div>
+                  <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Monitored Model</h4>
+                  {(() => {
+                    const model = global.getRegistryModel(selectedJob.modelId);
+                    return model ? (
+                      <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3 space-y-2`}>
+                        <div>
+                          <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Model Name</p>
+                          <p className={`${themeClasses.textPrimary(theme)} font-semibold`}>{model.name}</p>
+                        </div>
+                        <div>
+                          <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Version</p>
+                          <p className={`${themeClasses.textPrimary(theme)}`}>{model.version}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className={`${themeClasses.textSecondary(theme)} text-sm`}>Model not found</p>
+                    );
+                  })()}
+                </div>
+
+                {/* Monitoring Metrics */}
+                {selectedJob.metrics && selectedJob.status === 'completed' && (
+                  <div>
+                    <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Latest Metrics</h4>
+                    <div className="space-y-3">
+                      {/* Data Drift */}
+                      <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Data Drift</p>
+                          <span className={`text-sm font-semibold ${getDriftSeverity(selectedJob.metrics.dataDrift || 0).color}`}>
+                            {getDriftSeverity(selectedJob.metrics.dataDrift || 0).label}
+                          </span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              (selectedJob.metrics.dataDrift || 0) > 0.25
+                                ? 'bg-red-500'
+                                : (selectedJob.metrics.dataDrift || 0) > 0.15
+                                ? 'bg-yellow-500'
+                                : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min((selectedJob.metrics.dataDrift || 0) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)} mt-1`}>{((selectedJob.metrics.dataDrift || 0) * 100).toFixed(2)}%</p>
+                      </div>
+
+                      {/* Model Drift */}
+                      <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Model Drift</p>
+                          <span className={`text-sm font-semibold ${getDriftSeverity(selectedJob.metrics.modelDrift || 0).color}`}>
+                            {getDriftSeverity(selectedJob.metrics.modelDrift || 0).label}
+                          </span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              (selectedJob.metrics.modelDrift || 0) > 0.25
+                                ? 'bg-red-500'
+                                : (selectedJob.metrics.modelDrift || 0) > 0.15
+                                ? 'bg-yellow-500'
+                                : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min((selectedJob.metrics.modelDrift || 0) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)} mt-1`}>{((selectedJob.metrics.modelDrift || 0) * 100).toFixed(2)}%</p>
+                      </div>
+
+                      {/* Performance Degradation */}
+                      <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Performance Degradation</p>
+                          <span className={`text-sm font-semibold ${getDriftSeverity(selectedJob.metrics.performanceDegradation || 0).color}`}>
+                            {getDriftSeverity(selectedJob.metrics.performanceDegradation || 0).label}
+                          </span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              (selectedJob.metrics.performanceDegradation || 0) > 0.25
+                                ? 'bg-red-500'
+                                : (selectedJob.metrics.performanceDegradation || 0) > 0.15
+                                ? 'bg-yellow-500'
+                                : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min((selectedJob.metrics.performanceDegradation || 0) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className={`text-xs ${themeClasses.textSecondary(theme)} mt-1`}>{((selectedJob.metrics.performanceDegradation || 0) * 100).toFixed(2)}%</p>
+                      </div>
+
+                      {selectedJob.metrics.lastChecked && (
+                        <div className={`text-xs ${themeClasses.textSecondary(theme)}`}>
+                          Last checked: {new Date(selectedJob.metrics.lastChecked).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input Dataset */}
+                <div>
+                  <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Monitoring Dataset</h4>
+                  {(() => {
+                    const dataset = global.getPreparationJob(selectedJob.inputDatasetId || '');
+                    return dataset ? (
+                      <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3 space-y-2`}>
+                        <div>
+                          <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Dataset</p>
+                          <p className={`${themeClasses.textPrimary(theme)} font-semibold`}>{dataset.name}</p>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+
+                {/* Code Information */}
+                {selectedJob.codeId && (
+                  <div>
+                    <h4 className={`font-semibold text-sm mb-3 ${themeClasses.textPrimary(theme)}`}>Monitoring Code</h4>
+                    <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3`}>
+                      {(() => {
+                        const project = global.getProject(selectedJob.projectId);
+                        const code = project?.code.find(c => c.id === selectedJob.codeId);
+                        return code ? (
+                          <div>
+                            <p className={`${themeClasses.textPrimary(theme)} font-semibold text-sm`}>{code.name}</p>
+                            <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>{code.language}</p>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => handleRunJob(selectedJob.id)}
+                    disabled={selectedJob.status === 'running'}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white rounded-lg text-sm transition"
+                  >
+                    <Play size={14} />
+                    {selectedJob.status === 'running' ? 'Running...' : 'Run Check'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteJob(selectedJob.id)}
+                    className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm transition"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className={`flex-1 flex items-center justify-center ${themeClasses.textSecondary(theme)}`}>
+              Select a job to view details
             </div>
           )}
         </div>
-
-        <div className={`rounded-lg p-6 border ${driftMetrics.conceptDrift.detected ? 'bg-red-600/10 border-red-500' : 'bg-green-600/10 border-green-500'}`}>
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="font-semibold text-white">Concept Drift</h3>
-            {driftMetrics.conceptDrift.detected ? (
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-            ) : (
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            )}
-          </div>
-          <p className="text-2xl font-bold mb-1 text-white">{driftMetrics.conceptDrift.score.toFixed(1)}%</p>
-          <p className="text-sm text-white/60">Threshold: {driftMetrics.conceptDrift.threshold}%</p>
-          <p className="text-xs text-white/50 mt-3">Model still performing as expected</p>
-        </div>
-
-        <div className={`rounded-lg p-6 border ${driftMetrics.predictionDrift.detected ? 'bg-red-600/10 border-red-500' : 'bg-green-600/10 border-green-500'}`}>
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="font-semibold text-white">Prediction Drift</h3>
-            {driftMetrics.predictionDrift.detected ? (
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-            ) : (
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            )}
-          </div>
-          <p className="text-2xl font-bold mb-1 text-white">{driftMetrics.predictionDrift.score.toFixed(1)}%</p>
-          <p className="text-sm text-white/60">Threshold: {driftMetrics.predictionDrift.threshold}%</p>
-          <p className="text-xs text-white/50 mt-3">Output distribution has shifted</p>
-        </div>
       </div>
 
-      {/* Drift Timeline */}
-      <div className="bg-white/5 rounded-lg border border-white/10 p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Drift Metrics Timeline (24h)</h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={driftMetrics.timeline}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" />
-            <YAxis stroke="rgba(255,255,255,0.5)" />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)' }}
-              labelStyle={{ color: '#fff' }}
-              formatter={(value: any) => value.toFixed(2) + '%'}
-            />
-            <Line type="monotone" dataKey="dataDrift" stroke="#ef4444" name="Data Drift" strokeWidth={2} />
-            <Line type="monotone" dataKey="conceptDrift" stroke="#f59e0b" name="Concept Drift" strokeWidth={2} />
-            <Line type="monotone" dataKey="predictionDrift" stroke="#3b82f6" name="Prediction Drift" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Add Job Modal */}
+      {/* Modal */}
       {showJobModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-lg border border-white/10 p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold text-white mb-4">Create Monitoring Job</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
+            <div className={`p-6 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-300'} sticky top-0`}>
+              <h2 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>Create Monitoring Job</h2>
+            </div>
 
-            <div className="space-y-4">
+            <div className="p-6 space-y-6">
+              {/* Job Name */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Job Name</label>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Job Name *</label>
                 <input
                   type="text"
-                  value={jobName}
-                  onChange={(e) => setJobName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white/40"
-                  placeholder="e.g., Production Drift Monitor"
+                  placeholder="e.g., Production Model Health Check"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              {/* Project */}
+              <div>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Project *</label>
+                <select
+                  value={formData.projectId}
+                  onChange={(e) => {
+                    setFormData({ ...formData, projectId: e.target.value, modelId: '', inputDatasetId: '' });
+                    setSelectedCodeId(null);
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                >
+                  <option value="">Select a project...</option>
+                  {global.projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Model Selection */}
+              {formData.projectId && (
+                <div>
+                  <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Production Model *</label>
+                  <select
+                    value={formData.modelId}
+                    onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                  >
+                    <option value="">Select a model...</option>
+                    {getAvailableModels(formData.projectId).length === 0 ? (
+                      <option disabled>No production models available</option>
+                    ) : (
+                      getAvailableModels(formData.projectId).map(model => (
+                        <option key={model.id} value={model.id}>{model.name} (v{model.version})</option>
+                      ))
+                    )}
+                  </select>
+                  {getAvailableModels(formData.projectId).length === 0 && (
+                    <p className={`text-xs ${themeClasses.textSecondary(theme)} mt-2`}>
+                      No production models. Promote a model to production first.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Monitoring Dataset */}
+              {formData.projectId && (
+                <div>
+                  <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Monitoring Dataset *</label>
+                  <select
+                    value={formData.inputDatasetId}
+                    onChange={(e) => setFormData({ ...formData, inputDatasetId: e.target.value })}
+                    className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                  >
+                    <option value="">Select a prepared dataset...</option>
+                    {getAvailableDatasets(formData.projectId).length === 0 ? (
+                      <option disabled>No prepared datasets available</option>
+                    ) : (
+                      getAvailableDatasets(formData.projectId).map(dataset => (
+                        <option key={dataset.id} value={dataset.id}>{dataset.name}</option>
+                      ))
+                    )}
+                  </select>
+                  {getAvailableDatasets(formData.projectId).length === 0 && (
+                    <p className={`text-xs ${themeClasses.textSecondary(theme)} mt-2`}>
+                      No prepared datasets. Complete a data preparation job first.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Monitoring Frequency */}
+              <div>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Monitoring Frequency</label>
+                <select
+                  value={formData.frequency}
+                  onChange={(e) => setFormData({ ...formData, frequency: e.target.value as any })}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                >
+                  <option value="on-demand">On-Demand</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+
+              {/* Code Selection */}
+              {formData.projectId && (
+                <div>
+                  <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Monitoring Code (Optional)</label>
+                  <select
+                    value={selectedCodeId || ''}
+                    onChange={(e) => setSelectedCodeId(e.target.value || null)}
+                    className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                  >
+                    <option value="">No code selected</option>
+                    {getProjectCodes(formData.projectId).map(code => (
+                      <option key={code.id} value={code.id}>
+                        {code.name} ({code.language})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-4">
                 <button
                   onClick={() => setShowJobModal(false)}
-                  className="flex-1 px-4 py-2 border border-white/20 rounded-lg text-white hover:bg-white/10 transition font-medium"
+                  className={`flex-1 px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} transition`}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleAddJob}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition font-medium"
+                  onClick={handleCreateJob}
+                  disabled={!formData.name || !formData.projectId || !formData.modelId || !formData.inputDatasetId}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition"
                 >
-                  Create
+                  Create Job
                 </button>
               </div>
             </div>
@@ -358,6 +504,4 @@ const Monitoring: React.FC = () => {
       )}
     </div>
   );
-};
-
-export default Monitoring;
+}

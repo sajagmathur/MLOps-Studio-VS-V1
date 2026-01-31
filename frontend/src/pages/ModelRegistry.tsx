@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Upload, AlertCircle, Loader, Package, TrendingUp, Star, Check, Zap, Download } from 'lucide-react';
+import { Plus, Trash2, Upload, AlertCircle, Loader, Package, TrendingUp, Star, Check, Zap, Download, Code as CodeIcon, ArrowRight } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useNotification } from '../hooks/useNotification';
@@ -55,7 +55,7 @@ export default function ModelRegistry() {
     setUploadedFile(null);
   };
 
-  const handlePromoteModel = (modelId: string, newStage: 'staging' | 'production') => {
+  const handlePromoteModel = (modelId: string, newStage: 'dev' | 'staging' | 'production') => {
     global.updateRegistryModel(modelId, { stage: newStage });
     showNotification(`Model promoted to ${newStage}`, 'success');
   };
@@ -63,6 +63,7 @@ export default function ModelRegistry() {
   const handleDeleteModel = (modelId: string) => {
     if (confirm('Delete this model?')) {
       global.deleteRegistryModel(modelId);
+      if (selectedModelId === modelId) setSelectedModelId(null);
       showNotification('Model deleted', 'success');
     }
   };
@@ -80,391 +81,327 @@ export default function ModelRegistry() {
     }
   };
 
-  const modelTypes = [
-    { value: 'classification', label: 'Classification' },
-    { value: 'regression', label: 'Regression' },
-    { value: 'clustering', label: 'Clustering' },
-    { value: 'nlp', label: 'NLP' },
-    { value: 'custom', label: 'Custom' },
-  ];
-
   const getProjectCodes = (projectId: string) => {
     const project = global.getProject(projectId);
-    return project?.code.filter(c => c.language === 'python') || [];
+    return project?.code || [];
   };
 
-  const stageColors = {
-    dev: 'from-blue-600/20 to-blue-400/10 border-blue-400/30',
-    staging: 'from-yellow-600/20 to-yellow-400/10 border-yellow-400/30',
-    production: 'from-red-600/20 to-red-400/10 border-red-400/30',
+  const getStageColor = (stage: string) => {
+    return stage === 'production' ? 'from-red-600/20 to-red-400/10 border-red-400/30' :
+           stage === 'staging' ? 'from-yellow-600/20 to-yellow-400/10 border-yellow-400/30' :
+           'from-blue-600/20 to-blue-400/10 border-blue-400/30';
   };
 
-  const stageTextColors = {
-    dev: 'text-blue-400',
-    staging: 'text-yellow-400',
-    production: 'text-red-400',
+  const getStageIndicator = (stage: string) => {
+    return stage === 'production' ? { color: 'text-red-400', bg: 'bg-red-500/20' } :
+           stage === 'staging' ? { color: 'text-yellow-400', bg: 'bg-yellow-500/20' } :
+           { color: 'text-blue-400', bg: 'bg-blue-500/20' };
   };
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Model Registry' }]} />
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className={`text-3xl font-bold ${themeClasses.textPrimary(theme)}`}>Model Registry</h1>
-          <p className={`${themeClasses.textSecondary(theme)} mt-1`}>Browse, manage, and promote ML models</p>
+          <p className={`${themeClasses.textSecondary(theme)} mt-1`}>Manage and promote ML models through pipeline stages</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
+          onClick={() => {
+            setShowModal(true);
+            setFormData({ name: '', version: '1.0.0', projectId: '', modelType: 'classification', stage: 'dev' });
+            setSelectedCodeId(null);
+            setUploadedFile(null);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Register Model
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className={`p-4 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} rounded-lg border ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Total Models</p>
-          <p className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>{global.registryModels.length}</p>
-        </div>
-        <div className={`p-4 ${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} rounded-lg border ${theme === 'dark' ? 'border-blue-400/30' : 'border-blue-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Dev</p>
-          <p className="text-2xl font-bold text-blue-400">{global.registryModels.filter(m => m.stage === 'dev').length}</p>
-        </div>
-        <div className={`p-4 ${theme === 'dark' ? 'bg-yellow-500/10' : 'bg-yellow-50'} rounded-lg border ${theme === 'dark' ? 'border-yellow-400/30' : 'border-yellow-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Staging</p>
-          <p className="text-2xl font-bold text-yellow-400">{global.registryModels.filter(m => m.stage === 'staging').length}</p>
-        </div>
-        <div className={`p-4 ${theme === 'dark' ? 'bg-red-500/10' : 'bg-red-50'} rounded-lg border ${theme === 'dark' ? 'border-red-400/30' : 'border-red-300'}`}>
-          <p className={`${themeClasses.textSecondary(theme)} text-xs font-medium mb-1`}>Production</p>
-          <p className="text-2xl font-bold text-red-400">{global.registryModels.filter(m => m.stage === 'production').length}</p>
-        </div>
+      {/* Pipeline Stages View */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {['dev', 'staging', 'production'].map((stage, idx) => {
+          const stageModels = global.registryModels.filter(m => m.stage === stage);
+          const indicator = getStageIndicator(stage);
+          return (
+            <div
+              key={stage}
+              className={`rounded-lg border backdrop-blur-sm bg-gradient-to-br ${getStageColor(stage)} p-4`}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`w-3 h-3 rounded-full ${indicator.bg}`}></div>
+                <h3 className={`font-semibold capitalize ${themeClasses.textPrimary(theme)}`}>{stage}</h3>
+              </div>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>{stageModels.length}</p>
+              <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>Models</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Models Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {global.registryModels.length === 0 ? (
-          <div className={`col-span-full p-12 text-center ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} rounded-lg border ${theme === 'dark' ? 'border-white/10' : 'border-slate-300'}`}>
-            <Package size={48} className={`mx-auto mb-4 ${themeClasses.textSecondary(theme)}`} />
-            <p className={`${themeClasses.textSecondary(theme)} mb-4`}>No models registered yet</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
-            >
-              Register your first model
-            </button>
+          <div className={`col-span-full text-center py-12 ${themeClasses.textSecondary(theme)}`}>
+            <Package size={48} className="mx-auto mb-4 opacity-50" />
+            <p>No models registered yet</p>
           </div>
         ) : (
-          global.registryModels.map(model => (
-            <div
-              key={model.id}
-              onClick={() => setSelectedModelId(model.id)}
-              className={`p-6 bg-gradient-to-br ${stageColors[model.stage]} rounded-lg border cursor-pointer hover:border-white/50 transition-all`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>{model.name}</h3>
-                  <p className={`text-sm ${stageTextColors[model.stage]}`}>{model.stage.toUpperCase()}</p>
+          global.registryModels.map(model => {
+            const stageColor = getStageIndicator(model.stage);
+            return (
+              <div
+                key={model.id}
+                onClick={() => setSelectedModelId(model.id)}
+                className={`rounded-lg border backdrop-blur-sm transition-all cursor-pointer ${
+                  selectedModelId === model.id
+                    ? `${theme === 'dark' ? 'bg-blue-900/50 border-blue-500' : 'bg-blue-100 border-blue-500'} border-2`
+                    : `${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 border-slate-300'}`
+                }`}
+              >
+                <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${themeClasses.textPrimary(theme)}`}>{model.name}</h3>
+                      <p className={`text-xs ${themeClasses.textSecondary(theme)}`}>{model.version}</p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stageColor.bg} ${stageColor.color} capitalize`}>
+                      {model.stage}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {model.stage !== 'production' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePromoteModel(model.id, model.stage === 'dev' ? 'staging' : 'production');
-                      }}
-                      className="p-2 hover:bg-blue-500/20 rounded-lg transition text-blue-400"
-                      title="Promote model"
-                    >
-                      <TrendingUp size={16} />
-                    </button>
+
+                <div className="p-4 space-y-3">
+                  <div className="text-sm">
+                    <p className={`${themeClasses.textSecondary(theme)} text-xs mb-1`}>Type</p>
+                    <p className={`${themeClasses.textPrimary(theme)} capitalize`}>{model.modelType}</p>
+                  </div>
+
+                  {model.metrics && (
+                    <div className="space-y-2">
+                      {Object.entries(model.metrics).map(([key, value]) => (
+                        <div key={key} className="flex items-center justify-between text-sm">
+                          <span className={`${themeClasses.textSecondary(theme)} capitalize`}>{key}</span>
+                          <span className={`font-semibold ${(value as number) > 0.85 ? 'text-green-400' : 'text-yellow-400'}`}>
+                            {((value as number) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   )}
+
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteModel(model.id);
-                    }}
-                    className="p-2 hover:bg-red-500/20 rounded-lg transition text-red-400"
-                    title="Delete"
+                    onClick={() => setSelectedModelId(model.id)}
+                    className={`w-full px-3 py-2 text-sm rounded-lg transition ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'}`}
                   >
-                    <Trash2 size={16} />
+                    View Details
                   </button>
                 </div>
               </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className={themeClasses.textSecondary(theme)}>Version</span>
-                  <span className={themeClasses.textPrimary(theme)}>{model.version}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className={themeClasses.textSecondary(theme)}>Type</span>
-                  <span className={themeClasses.textPrimary(theme)}>{model.modelType}</span>
-                </div>
-              </div>
-
-              {/* Metrics */}
-              {model.metrics && (
-                <div className="space-y-2 pt-4 border-t border-white/10">
-                  <div className="flex justify-between text-sm">
-                    <span className={themeClasses.textSecondary(theme)}>Accuracy</span>
-                    <span className={`font-semibold ${model.metrics.accuracy > 0.85 ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {(model.metrics.accuracy * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className={themeClasses.textSecondary(theme)}>Precision</span>
-                    <span className={`font-semibold ${model.metrics.precision > 0.85 ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {(model.metrics.precision * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className={themeClasses.textSecondary(theme)}>Recall</span>
-                    <span className={`font-semibold ${model.metrics.recall > 0.85 ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {(model.metrics.recall * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* Model Details */}
+      {/* Detail Modal */}
       {selectedModel && (
-        <div className={`${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-300'} rounded-lg border p-6 space-y-6`}>
-          <div className="flex items-center justify-between">
-            <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>{selectedModel.name}</h2>
+        <div className={`rounded-lg border backdrop-blur-sm bg-gradient-to-br ${getStageColor(selectedModel.stage)} p-6 mt-6`}>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)}`}>{selectedModel.name}</h2>
+              <p className={`${themeClasses.textSecondary(theme)} text-sm`}>Version {selectedModel.version} • Project: {global.getProject(selectedModel.projectId)?.name}</p>
+            </div>
             <button
-              onClick={() => setSelectedModelId(null)}
-              className={`px-4 py-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} rounded-lg transition`}
+              onClick={() => handleDeleteModel(selectedModel.id)}
+              className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg text-sm transition"
             >
-              Close
+              <Trash2 size={14} />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className={`p-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-              <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-1`}>VERSION</p>
-              <p className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>{selectedModel.version}</p>
-            </div>
-            <div className={`p-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-              <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-1`}>MODEL TYPE</p>
-              <p className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>{selectedModel.modelType}</p>
-            </div>
-            <div className={`p-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-              <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-1`}>STAGE</p>
-              <p className={`text-lg font-bold ${stageTextColors[selectedModel.stage]}`}>{selectedModel.stage.toUpperCase()}</p>
-            </div>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            {selectedModel.metrics && Object.entries(selectedModel.metrics).map(([key, value]) => (
+              <div key={key} className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-3`}>
+                <p className={`text-xs ${themeClasses.textSecondary(theme)} capitalize`}>{key}</p>
+                <p className={`text-2xl font-bold ${(value as number) > 0.85 ? 'text-green-400' : 'text-yellow-400'}`}>
+                  {((value as number) * 100).toFixed(1)}%
+                </p>
+              </div>
+            ))}
           </div>
 
-          {/* Model File */}
+          {/* Promotion Pipeline */}
+          <div className="flex items-center gap-3 mb-6">
+            {['dev', 'staging', 'production'].map((stage, idx) => {
+              const isActive = selectedModel.stage === stage;
+              const isCompleted = ['dev', 'staging', 'production'].indexOf(selectedModel.stage) >= idx;
+              return (
+                <div key={stage} className="flex items-center gap-3">
+                  <button
+                    onClick={() => handlePromoteModel(selectedModel.id, stage as any)}
+                    disabled={['dev', 'staging', 'production'].indexOf(selectedModel.stage) > idx}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : isCompleted
+                        ? 'bg-green-600/20 text-green-400'
+                        : `${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} disabled:opacity-50`
+                    }`}
+                  >
+                    {stage.charAt(0).toUpperCase() + stage.slice(1)}
+                  </button>
+                  {idx < 2 && <ArrowRight size={18} className={themeClasses.textSecondary(theme)} />}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Code Information */}
+          {selectedModel.codeId && (
+            <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-4 mb-4`}>
+              <h4 className={`font-semibold text-sm mb-2 ${themeClasses.textPrimary(theme)}`}>Registration Code</h4>
+              {(() => {
+                const project = global.getProject(selectedModel.projectId);
+                const code = project?.code.find(c => c.id === selectedModel.codeId);
+                return code ? (
+                  <div>
+                    <p className={`${themeClasses.textPrimary(theme)} font-mono text-sm`}>{code.name}</p>
+                    <p className={`${themeClasses.textSecondary(theme)} text-xs`}>{code.language}</p>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          )}
+
+          {/* File Info */}
           {selectedModel.uploadedFile && (
-            <div className={`p-4 ${theme === 'dark' ? 'bg-green-500/10 border-green-400/30' : 'bg-green-50 border-green-300'} rounded border`}>
-              <p className="text-sm font-semibold text-green-400 mb-2 flex items-center gap-2">
-                <Check size={16} />
-                Model File
-              </p>
-              <div className={`text-sm ${themeClasses.textSecondary(theme)} space-y-1`}>
-                <p>File: {selectedModel.uploadedFile.name}</p>
-                <p>Size: {(selectedModel.uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                <p>Path: {selectedModel.uploadedFile.path}</p>
-              </div>
+            <div className={`${theme === 'dark' ? 'bg-slate-900/50' : 'bg-white/50'} rounded-lg p-4`}>
+              <h4 className={`font-semibold text-sm mb-2 ${themeClasses.textPrimary(theme)}`}>Model File</h4>
+              <p className={`${themeClasses.textPrimary(theme)} text-sm`}>{selectedModel.uploadedFile.name}</p>
+              <p className={`${themeClasses.textSecondary(theme)} text-xs`}>{(selectedModel.uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           )}
-
-          {/* Registration Code */}
-          {selectedModel.codeId && global.getProject(selectedModel.projectId)?.code && (
-            <CodeTerminal
-              code={global.getProject(selectedModel.projectId)?.code.find(c => c.id === selectedModel.codeId)?.content}
-              language="python"
-              title="Model Registration Code"
-              height="h-40"
-            />
-          )}
-
-          {/* Promotion Workflow */}
-          <div className={`p-4 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-            <p className="text-sm font-semibold mb-3">Promotion Workflow</p>
-            <div className="flex items-center justify-between">
-              <div className={`flex-1 p-3 rounded-lg text-center ${selectedModel.stage === 'dev' ? 'bg-blue-500/20 border-2 border-blue-400' : 'bg-slate-700/50 border border-slate-600'}`}>
-                <p className="text-xs font-medium">Dev</p>
-              </div>
-              <div className={`px-3 ${themeClasses.textSecondary(theme)}`}>→</div>
-              <div className={`flex-1 p-3 rounded-lg text-center ${selectedModel.stage === 'staging' ? 'bg-yellow-500/20 border-2 border-yellow-400' : 'bg-slate-700/50 border border-slate-600'}`}>
-                <p className="text-xs font-medium">Staging</p>
-              </div>
-              <div className={`px-3 ${themeClasses.textSecondary(theme)}`}>→</div>
-              <div className={`flex-1 p-3 rounded-lg text-center ${selectedModel.stage === 'production' ? 'bg-red-500/20 border-2 border-red-400' : 'bg-slate-700/50 border border-slate-600'}`}>
-                <p className="text-xs font-medium">Production</p>
-              </div>
-            </div>
-            {selectedModel.stage !== 'production' && (
-              <button
-                onClick={() => handlePromoteModel(selectedModel.id, selectedModel.stage === 'dev' ? 'staging' : 'production')}
-                className="mt-4 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
-              >
-                <Zap size={16} />
-                Promote to {selectedModel.stage === 'dev' ? 'Staging' : 'Production'}
-              </button>
-            )}
-          </div>
         </div>
       )}
 
       {/* Create Model Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-8 w-full max-w-2xl border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'} max-h-[90vh] overflow-y-auto`}>
-            <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)} mb-6`}>Register New Model</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
+            <div className={`p-6 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-300'} sticky top-0`}>
+              <h2 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>Register New Model</h2>
+            </div>
 
-            <div className="space-y-6">
-              {/* Basic Info */}
+            <div className="p-6 space-y-6">
+              {/* Model Name */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Model Name *</label>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Model Name *</label>
                 <input
                   type="text"
+                  placeholder="e.g., Customer Churn Predictor"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
-                  placeholder="e.g., Customer Churn Predictor"
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                />
+              </div>
+
+              {/* Version */}
+              <div>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Version</label>
+                <input
+                  type="text"
+                  value={formData.version}
+                  onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                 />
               </div>
 
               {/* Project Selection */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Select Project *</label>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Project *</label>
                 <select
                   value={formData.projectId}
-                  onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
+                  onChange={(e) => {
+                    setFormData({ ...formData, projectId: e.target.value });
+                    setSelectedCodeId(null);
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                 >
-                  <option value="">Choose a project...</option>
+                  <option value="">Select a project...</option>
                   {global.projects.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Version */}
-                <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Version</label>
-                  <input
-                    type="text"
-                    value={formData.version}
-                    onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-900 border-slate-700 text-white'
-                        : 'bg-white border-slate-300 text-black'
-                    }`}
-                    placeholder="1.0.0"
-                  />
-                </div>
-
-                {/* Model Type */}
-                <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Model Type</label>
-                  <select
-                    value={formData.modelType}
-                    onChange={(e) => setFormData({ ...formData, modelType: e.target.value as any })}
-                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-900 border-slate-700 text-white'
-                        : 'bg-white border-slate-300 text-black'
-                    }`}
-                  >
-                    {modelTypes.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Model Type */}
+              <div>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Model Type</label>
+                <select
+                  value={formData.modelType}
+                  onChange={(e) => setFormData({ ...formData, modelType: e.target.value as any })}
+                  className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+                >
+                  <option value="classification">Classification</option>
+                  <option value="regression">Regression</option>
+                  <option value="clustering">Clustering</option>
+                  <option value="nlp">NLP</option>
+                  <option value="custom">Custom</option>
+                </select>
               </div>
 
-              {/* Model File Upload */}
+              {/* Upload Model */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Upload Model File</label>
-                <label className={`border-2 border-dashed ${theme === 'dark' ? 'border-slate-700 hover:border-blue-500' : 'border-slate-300 hover:border-blue-500'} rounded-lg p-6 cursor-pointer transition-colors text-center`}>
+                <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Upload Model File</label>
+                <div className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${
+                  theme === 'dark' ? 'border-slate-600 hover:border-blue-500' : 'border-slate-300 hover:border-blue-500'
+                }`}>
                   <input
                     type="file"
                     onChange={handleFileUpload}
                     className="hidden"
-                    accept=".pkl,.joblib,.h5,.pth,.onnx"
+                    id="model-file-upload"
                   />
-                  {uploadedFile ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <Check size={20} className="text-green-400" />
-                      <div className="text-left">
-                        <p className="font-medium text-green-400">{uploadedFile.name}</p>
-                        <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>
-                          {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={themeClasses.textSecondary(theme)}>
-                      <Upload size={24} className="mx-auto mb-2" />
-                      <p>Click to upload model file</p>
-                      <p className="text-xs mt-1">PKL, JobLib, H5, PyTorch, ONNX</p>
-                    </div>
-                  )}
-                </label>
+                  <label htmlFor="model-file-upload" className="cursor-pointer block">
+                    <Upload size={32} className="mx-auto mb-2 opacity-50" />
+                    <p className={`text-sm ${themeClasses.textSecondary(theme)}`}>Click to upload model file</p>
+                    {uploadedFile && <p className="text-sm text-green-400 mt-2">✓ {uploadedFile.name}</p>}
+                  </label>
+                </div>
               </div>
 
-              {/* Registration Code */}
+              {/* Code Selection */}
               {formData.projectId && (
                 <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Select Registration Code</label>
+                  <label className={`block text-sm font-semibold mb-2 ${themeClasses.textPrimary(theme)}`}>Registration Code (Optional)</label>
                   <select
                     value={selectedCodeId || ''}
                     onChange={(e) => setSelectedCodeId(e.target.value || null)}
-                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-900 border-slate-700 text-white'
-                        : 'bg-white border-slate-300 text-black'
-                    }`}
+                    className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
                   >
                     <option value="">No code selected</option>
                     {getProjectCodes(formData.projectId).map(code => (
-                      <option key={code.id} value={code.id}>{code.name}</option>
+                      <option key={code.id} value={code.id}>
+                        {code.name} ({code.language})
+                      </option>
                     ))}
                   </select>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 pt-6 border-t border-slate-700">
+              <div className="flex gap-2 pt-4">
                 <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setFormData({ name: '', version: '1.0.0', projectId: '', modelType: 'classification', stage: 'dev' });
-                    setSelectedCodeId(null);
-                    setUploadedFile(null);
-                  }}
-                  className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-700 hover:bg-slate-600'
-                      : 'bg-slate-300 hover:bg-slate-400'
-                  }`}
+                  onClick={() => setShowModal(false)}
+                  className={`flex-1 px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} transition`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateModel}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
                 >
                   Register Model
                 </button>

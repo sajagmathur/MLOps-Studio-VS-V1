@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ExternalLink, Folder, AlertCircle, Code, Lock, RefreshCw, Play, Save, ChevronRight, ChevronDown, FileText, FolderOpen, Trash } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink, Folder, AlertCircle, Code, Lock, RefreshCw, Play, Save, ChevronRight, ChevronDown, FileText, FolderOpen, Trash, Download, Copy, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGlobal } from '../contexts/GlobalContext';
 import { useNotification } from '../hooks/useNotification';
@@ -35,7 +35,7 @@ export default function Projects() {
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
-  const [fileType, setFileType] = useState<'python' | 'dockerfile' | 'yaml' | 'text'>('python');
+  const [fileType, setFileType] = useState<'python' | 'dockerfile' | 'yaml' | 'json' | 'text'>('python');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   // Search & Filter
@@ -45,6 +45,54 @@ export default function Projects() {
   const itemsPerPage = 10;
 
   const selectedProject = selectedProjectId ? global.getProject(selectedProjectId) : null;
+
+  // Load file tree from GlobalContext when project changes
+  useEffect(() => {
+    if (selectedProject && selectedProject.code && selectedProject.code.length > 0) {
+      // Reconstruct file tree from ProjectCode array
+      const reconstructedTree: ProjectFile[] = selectedProject.code.map(code => ({
+        id: code.id,
+        name: code.name,
+        type: 'file',
+        language: code.language,
+        content: code.content,
+      }));
+      setFileTree(reconstructedTree);
+    } else if (selectedProject) {
+      // Initialize with empty tree for new project
+      setFileTree([
+        {
+          id: 'src-folder',
+          name: 'src',
+          type: 'folder',
+          expanded: true,
+          children: [
+            {
+              id: 'train-py-sample',
+              name: 'train.py',
+              type: 'file',
+              language: 'python',
+              content: `# Training script for ${selectedProject.name}\nimport pandas as pd\n# Add your training code here`,
+            },
+            {
+              id: 'infer-py-sample',
+              name: 'inference.py',
+              type: 'file',
+              language: 'python',
+              content: `# Inference script for ${selectedProject.name}\nimport pickle\n# Add your inference code here`,
+            },
+          ],
+        },
+        {
+          id: 'dockerfile-sample',
+          name: 'Dockerfile',
+          type: 'file',
+          language: 'dockerfile',
+          content: `FROM python:3.10-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCMD ["python", "src/inference.py"]`,
+        },
+      ]);
+    }
+  }, [selectedProject?.id]);
 
   // Filter projects
   const filtered = global.projects.filter(p => {
@@ -113,82 +161,8 @@ export default function Projects() {
 
   const initializeWorkspace = (projectId: string) => {
     setSelectedProjectId(projectId);
-    // Initialize with sample file structure
-    setFileTree([
-      {
-        id: 'src-folder',
-        name: 'src',
-        type: 'folder',
-        expanded: true,
-        children: [
-          {
-            id: 'train-py',
-            name: 'train.py',
-            type: 'file',
-            language: 'python',
-            content: `import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-
-# Load data
-df = pd.read_csv('data.csv')
-print(f"Data shape: {df.shape}")
-
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(df.drop('target', axis=1), df['target'])
-
-# Train model
-model = RandomForestClassifier()
-model.fit(X_train, y_train)
-print(f"Training complete. Accuracy: {model.score(X_test, y_test):.2f}")`,
-          },
-          {
-            id: 'infer-py',
-            name: 'inference.py',
-            type: 'file',
-            language: 'python',
-            content: `import pickle
-import pandas as pd
-
-# Load model
-model = pickle.load(open('model.pkl', 'rb'))
-
-# Make predictions
-df = pd.read_csv('input.csv')
-predictions = model.predict(df)
-print(f"Predictions made for {len(predictions)} samples")`,
-          },
-        ],
-      },
-      {
-        id: 'dockerfile-id',
-        name: 'Dockerfile',
-        type: 'file',
-        language: 'dockerfile',
-        content: `FROM python:3.10-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY src/ ./src/
-EXPOSE 5000
-
-CMD ["python", "src/inference.py"]`,
-      },
-      {
-        id: 'requirements-txt',
-        name: 'requirements.txt',
-        type: 'file',
-        language: 'text',
-        content: `scikit-learn==1.2.0
-pandas==1.5.0
-numpy==1.24.0
-flask==2.3.0`,
-      },
-    ]);
-    setSelectedFile(null);
     setViewMode('workspace');
+    setSelectedFile(null);
   };
 
   const toggleFileExpand = (fileId: string) => {
@@ -206,19 +180,59 @@ flask==2.3.0`,
     if (file.type === 'file') setSelectedFile(file);
   };
 
-  const handleUpdateFileContent = (content: string) => {
-    if (selectedFile) {
-      const update = (files: ProjectFile[]): ProjectFile[] => {
-        return files.map(f =>
-          f.id === selectedFile.id
-            ? { ...f, content }
-            : f.children ? { ...f, children: update(f.children) } : f
-        );
+  const handleSaveFileContent = (content: string) => {
+    if (!selectedFile || !selectedProject) return;
+
+    // Update local file tree
+    const update = (files: ProjectFile[]): ProjectFile[] => {
+      return files.map(f =>
+        f.id === selectedFile.id
+          ? { ...f, content }
+          : f.children ? { ...f, children: update(f.children) } : f
+      );
+    };
+    setFileTree(update(fileTree));
+    setSelectedFile({ ...selectedFile, content });
+
+    // Save to GlobalContext
+    const existingCode = selectedProject.code.find(c => c.id === selectedFile.id);
+    if (existingCode) {
+      // Update existing code
+      global.updateProjectCode(selectedProject.id, selectedFile.id, { content });
+    } else {
+      // Add as new code
+      const newCode = {
+        name: selectedFile.name,
+        language: selectedFile.language || 'python' as const,
+        content,
       };
-      setFileTree(update(fileTree));
-      setSelectedFile({ ...selectedFile, content });
-      showNotification('File saved', 'success');
+      global.addProjectCode(selectedProject.id, newCode);
     }
+
+    showNotification('File saved to project', 'success');
+  };
+
+  const handleDeleteFile = (fileId: string) => {
+    if (!confirm('Delete this file?')) return;
+    
+    const deleteFromTree = (files: ProjectFile[]): ProjectFile[] => {
+      return files
+        .filter(f => f.id !== fileId)
+        .map(f => f.children ? { ...f, children: deleteFromTree(f.children) } : f);
+    };
+    
+    setFileTree(deleteFromTree(fileTree));
+    if (selectedFile?.id === fileId) setSelectedFile(null);
+
+    // Also delete from GlobalContext if it's a saved code
+    if (selectedProject) {
+      const codeToDelete = selectedProject.code.find(c => c.id === fileId);
+      if (codeToDelete) {
+        global.deleteProjectCode(selectedProject.id, fileId);
+      }
+    }
+
+    showNotification('File deleted', 'success');
   };
 
   const handleCreateFile = () => {
@@ -231,6 +245,7 @@ flask==2.3.0`,
     if (fileType === 'python' && !filename.endsWith('.py')) filename += '.py';
     if (fileType === 'dockerfile' && !filename.endsWith('Dockerfile')) filename = 'Dockerfile';
     if (fileType === 'yaml' && !filename.endsWith('.yaml')) filename += '.yaml';
+    if (fileType === 'json' && !filename.endsWith('.json')) filename += '.json';
     if (fileType === 'text' && !filename.endsWith('.txt')) filename += '.txt';
 
     const newFile: ProjectFile = {
@@ -297,24 +312,38 @@ flask==2.3.0`,
   const renderFileTree = (files: ProjectFile[], depth = 0): React.ReactNode => {
     return files.map(file => (
       <div key={file.id}>
-        <div
-          onClick={() => {
-            if (file.type === 'folder') {
-              toggleFileExpand(file.id);
-            } else {
-              handleFileSelect(file);
-            }
-          }}
-          className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/10 group transition-colors ${
-            selectedFile?.id === file.id ? `bg-blue-500/30 border-l-2 border-blue-400` : ''
-          }`}
-          style={{ paddingLeft: `${12 + depth * 16}px` }}
-        >
-          {file.type === 'folder' && (
-            file.expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-          )}
-          {file.type === 'folder' ? <FolderOpen size={14} /> : <FileText size={14} />}
-          <span className="text-sm flex-1 truncate">{file.name}</span>
+        <div className="group">
+          <div
+            onClick={() => {
+              if (file.type === 'folder') {
+                toggleFileExpand(file.id);
+              } else {
+                handleFileSelect(file);
+              }
+            }}
+            className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-white/10 transition-colors ${
+              selectedFile?.id === file.id ? `bg-blue-500/30 border-l-2 border-blue-400` : ''
+            }`}
+            style={{ paddingLeft: `${12 + depth * 16}px` }}
+          >
+            {file.type === 'folder' && (
+              file.expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+            )}
+            {file.type === 'folder' ? <FolderOpen size={14} /> : <FileText size={14} />}
+            <span className="text-sm flex-1 truncate">{file.name}</span>
+            {file.type === 'file' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteFile(file.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-600/20 rounded transition-all"
+                title="Delete file"
+              >
+                <Trash size={12} className="text-red-400" />
+              </button>
+            )}
+          </div>
         </div>
         {file.type === 'folder' && file.expanded && file.children && renderFileTree(file.children, depth + 1)}
       </div>
@@ -334,10 +363,15 @@ flask==2.3.0`,
         <div className="flex items-center justify-between">
           <div>
             <h1 className={`text-3xl font-bold ${themeClasses.textPrimary(theme)}`}>{selectedProject.name} - Workspace</h1>
-            <p className={`${themeClasses.textSecondary(theme)} mt-1`}>Environment: {selectedProject.environment}</p>
+            <p className={`${themeClasses.textSecondary(theme)} mt-1`}>
+              Environment: {selectedProject.environment} | Saved Files: {selectedProject.code.length}
+            </p>
           </div>
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => {
+              setViewMode('list');
+              setSelectedProjectId(null);
+            }}
             className={`px-4 py-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} rounded-lg transition`}
           >
             Back to Projects
@@ -385,11 +419,12 @@ flask==2.3.0`,
                 <div className={`p-3 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'} flex items-center justify-between`}>
                   <span className={`font-semibold text-sm ${themeClasses.textPrimary(theme)}`}>{selectedFile.name}</span>
                   <button
-                    onClick={() => handleUpdateFileContent(selectedFile.content || '')}
+                    onClick={() => handleSaveFileContent(selectedFile.content || '')}
                     className="p-1 hover:bg-blue-600/20 rounded flex items-center gap-1 text-xs transition-colors text-blue-400"
-                    title="Save file"
+                    title="Save file to project"
                   >
                     <Save size={14} />
+                    Save
                   </button>
                 </div>
                 <textarea
@@ -409,7 +444,7 @@ flask==2.3.0`,
           {/* Info Panel */}
           <div className={`${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-300'} border rounded-lg overflow-hidden flex flex-col`}>
             <div className={`p-3 border-b ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-slate-200 border-slate-300'} font-semibold text-sm`}>
-              Info
+              Project Info
             </div>
             <div className={`flex-1 overflow-y-auto p-4 space-y-4 text-sm ${themeClasses.textSecondary(theme)}`}>
               <div>
@@ -420,6 +455,22 @@ flask==2.3.0`,
                 <p className="text-xs">Environment</p>
                 <p className={`${themeClasses.textPrimary(theme)} mt-1 capitalize`}>{selectedProject.environment}</p>
               </div>
+              <div>
+                <p className="text-xs">Saved Code Files</p>
+                <p className={`${themeClasses.textPrimary(theme)} mt-1 text-lg font-semibold`}>{selectedProject.code.length}</p>
+              </div>
+              {selectedProject.code.length > 0 && (
+                <div>
+                  <p className="text-xs mb-2">Available Code</p>
+                  <div className="space-y-1">
+                    {selectedProject.code.map(code => (
+                      <div key={code.id} className={`text-xs px-2 py-1 ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-300'} rounded`}>
+                        {code.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {selectedFile && (
                 <>
                   <div>
@@ -450,101 +501,69 @@ flask==2.3.0`,
 
         {/* Modals */}
         {showNewFileModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 w-full max-w-sm border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-              <h2 className={`text-xl font-bold mb-4 ${themeClasses.textPrimary(theme)}`}>Create New File</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className={`block text-sm mb-2 ${themeClasses.textSecondary(theme)}`}>File Type</label>
-                  <select
-                    value={fileType}
-                    onChange={(e) => setFileType(e.target.value as any)}
-                    className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:border-blue-500 ${
-                      theme === 'dark'
-                        ? 'bg-slate-900 border-slate-700 text-white'
-                        : 'bg-white border-slate-300 text-black'
-                    }`}
-                  >
-                    <option value="python">Python (.py)</option>
-                    <option value="dockerfile">Dockerfile</option>
-                    <option value="yaml">YAML (.yaml)</option>
-                    <option value="text">Text (.txt)</option>
-                  </select>
-                </div>
-                <input
-                  type="text"
-                  value={newFileName}
-                  onChange={(e) => setNewFileName(e.target.value)}
-                  placeholder="File name"
-                  className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:border-blue-500 ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500'
-                      : 'bg-white border-slate-300 text-black placeholder-slate-400'
-                  }`}
-                />
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowNewFileModal(false);
-                      setNewFileName('');
-                    }}
-                    className={`flex-1 px-4 py-2 rounded-lg transition ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 hover:bg-slate-600'
-                        : 'bg-slate-300 hover:bg-slate-400'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateFile}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                  >
-                    Create
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 max-w-sm w-full space-y-4`}>
+              <h2 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>Create New File</h2>
+              <input
+                type="text"
+                placeholder="File name"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+              />
+              <select
+                value={fileType}
+                onChange={(e) => setFileType(e.target.value as any)}
+                className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+              >
+                <option value="python">Python</option>
+                <option value="dockerfile">Dockerfile</option>
+                <option value="yaml">YAML</option>
+                <option value="json">JSON</option>
+                <option value="text">Text</option>
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowNewFileModal(false)}
+                  className={`flex-1 px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} transition`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFile}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                >
+                  Create
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {showNewFolderModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 w-full max-w-sm border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-              <h2 className={`text-xl font-bold mb-4 ${themeClasses.textPrimary(theme)}`}>Create New Folder</h2>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Folder name"
-                  className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:border-blue-500 ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500'
-                      : 'bg-white border-slate-300 text-black placeholder-slate-400'
-                  }`}
-                />
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowNewFolderModal(false);
-                      setNewFolderName('');
-                    }}
-                    className={`flex-1 px-4 py-2 rounded-lg transition ${
-                      theme === 'dark'
-                        ? 'bg-slate-700 hover:bg-slate-600'
-                        : 'bg-slate-300 hover:bg-slate-400'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateFolder}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                  >
-                    Create
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 max-w-sm w-full space-y-4`}>
+              <h2 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>Create New Folder</h2>
+              <input
+                type="text"
+                placeholder="Folder name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowNewFolderModal(false)}
+                  className={`flex-1 px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} transition`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFolder}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                >
+                  Create
+                </button>
               </div>
             </div>
           </div>
@@ -555,215 +574,164 @@ flask==2.3.0`,
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Projects' }]} />
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={`text-4xl font-bold ${themeClasses.textPrimary(theme)} mb-2`}>Projects</h1>
-          <p className={themeClasses.textSecondary(theme)}>Manage your ML projects and code</p>
+          <h1 className={`text-3xl font-bold ${themeClasses.textPrimary(theme)}`}>Projects</h1>
+          <p className={`${themeClasses.textSecondary(theme)} mt-1`}>Manage your ML projects</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all font-medium"
+          onClick={() => {
+            setEditingId(null);
+            setFormData({ name: '', description: '', environment: 'dev' });
+            setShowModal(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           New Project
         </button>
       </div>
 
       {/* Search & Filter */}
-      {global.projects.length > 0 && (
-        <div className="space-y-4">
-          <SearchBar
-            placeholder="Search projects..."
-            onSearch={setSearchQuery}
-          />
-          <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-4 items-center flex-wrap">
+        <SearchBar
+          placeholder="Search projects..."
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+        <div className="flex gap-2">
+          {(['all', 'active', 'inactive'] as const).map(status => (
             <FilterChip
-              label="All"
-              isActive={statusFilter === 'all'}
-              onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
+              key={status}
+              label={status.charAt(0).toUpperCase() + status.slice(1)}
+              active={statusFilter === status}
+              onClick={() => setStatusFilter(status)}
             />
-            <FilterChip
-              label="Active"
-              isActive={statusFilter === 'active'}
-              onClick={() => { setStatusFilter('active'); setCurrentPage(1); }}
-            />
-            <FilterChip
-              label="Inactive"
-              isActive={statusFilter === 'inactive'}
-              onClick={() => { setStatusFilter('inactive'); setCurrentPage(1); }}
-            />
-          </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Projects Grid */}
+      {paginatedProjects.length === 0 ? (
+        <EmptyState
+          icon={Code}
+          title="No projects found"
+          description="Create your first project to get started"
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {paginatedProjects.map(project => (
+            <div
+              key={project.id}
+              className={`rounded-lg border backdrop-blur-sm transition-all hover:shadow-lg overflow-hidden bg-gradient-to-br ${getEnvColor(project.environment)}`}
+            >
+              <div className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white/50 border-slate-300/50'}`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className={`font-semibold text-lg ${themeClasses.textPrimary(theme)}`}>{project.name}</h3>
+                    <p className={`${themeClasses.textSecondary(theme)} text-sm mt-1`}>{project.description}</p>
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    project.status === 'active'
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {project.status}
+                  </span>
+                </div>
+              </div>
+              <div className={`p-4 space-y-3`}>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className={`${themeClasses.textSecondary(theme)} text-xs`}>Environment</p>
+                    <p className={`${themeClasses.textPrimary(theme)} font-semibold capitalize`}>{project.environment}</p>
+                  </div>
+                  <div>
+                    <p className={`${themeClasses.textSecondary(theme)} text-xs`}>Code Files</p>
+                    <p className={`${themeClasses.textPrimary(theme)} font-semibold`}>{project.code.length}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => initializeWorkspace(project.id)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
+                  >
+                    <Code size={14} />
+                    Workspace
+                  </button>
+                  <button
+                    onClick={() => openEditModal(project.id)}
+                    className={`p-2 ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} rounded-lg transition`}
+                    title="Edit project"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(project.id)}
+                    className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition"
+                    title="Delete project"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Projects Grid */}
-      {global.projects.length === 0 ? (
-        <EmptyState
-          icon={<Folder size={48} />}
-          title="No projects yet"
-          description="Create your first project to get started"
-          action={{
-            label: 'Create Project',
-            onClick: () => setShowModal(true),
-          }}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
         />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          title="No projects match your filters"
-          description="Try adjusting your search criteria"
-        />
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedProjects.map((project) => (
-              <div
-                key={project.id}
-                className={`p-6 bg-gradient-to-br ${getEnvColor(project.environment)} rounded-xl border ${
-                  theme === 'dark' ? 'border-white/20' : 'border-slate-300'
-                } transition-all hover:border-white/40`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-bold ${themeClasses.textPrimary(theme)} mb-1`}>{project.name}</h3>
-                    <p className={`${themeClasses.textSecondary(theme)} text-sm`}>{project.description || 'No description'}</p>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => initializeWorkspace(project.id)}
-                      className="p-2 hover:bg-blue-500/20 rounded-lg transition-all text-blue-400"
-                      title="Open workspace"
-                    >
-                      <Code size={16} />
-                    </button>
-                    <button
-                      onClick={() => openEditModal(project.id)}
-                      className={`p-2 hover:bg-opacity-20 rounded-lg transition-all ${themeClasses.textSecondary(theme)}`}
-                      title="Edit"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(project.id)}
-                      className="p-2 hover:bg-red-500/20 rounded-lg transition-all text-red-400"
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                    project.environment === 'prod' ? 'text-red-400 bg-red-500/20' :
-                    project.environment === 'staging' ? 'text-yellow-400 bg-yellow-500/20' :
-                    'text-blue-400 bg-blue-500/20'
-                  }`}>
-                    {project.environment.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="text-sm space-y-2">
-                  <p className={themeClasses.textSecondary(theme)}>
-                    <span className="font-semibold">{project.code.length}</span> files
-                  </p>
-                  <p className={themeClasses.textSecondary(theme)}>
-                    Created: {project.createdAt?.split('T')[0]}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              itemsPerPage={itemsPerPage}
-              totalItems={filtered.length}
-            />
-          )}
-        </>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-xl p-8 w-full max-w-md border ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}>
-            <h2 className={`text-2xl font-bold ${themeClasses.textPrimary(theme)} mb-6`}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg p-6 max-w-md w-full space-y-4`}>
+            <h2 className={`text-lg font-bold ${themeClasses.textPrimary(theme)}`}>
               {editingId ? 'Edit Project' : 'Create New Project'}
             </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Project Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
-                  placeholder="Project name"
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors resize-none ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
-                  placeholder="Describe your project"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary(theme)} mb-2`}>Environment</label>
-                <select
-                  value={formData.environment}
-                  onChange={(e) => setFormData({ ...formData, environment: e.target.value as any })}
-                  className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-blue-500 transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 border-slate-700 text-white'
-                      : 'bg-white border-slate-300 text-black'
-                  }`}
-                >
-                  <option value="dev">Development</option>
-                  <option value="staging">Staging</option>
-                  <option value="prod">Production</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-8">
+            <input
+              type="text"
+              placeholder="Project name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+            />
+            <textarea
+              placeholder="Description (optional)"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500 min-h-20 resize-none`}
+            />
+            <select
+              value={formData.environment}
+              onChange={(e) => setFormData({ ...formData, environment: e.target.value as any })}
+              className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'} focus:outline-none focus:border-blue-500`}
+            >
+              <option value="dev">Development</option>
+              <option value="staging">Staging</option>
+              <option value="prod">Production</option>
+            </select>
+            <div className="flex gap-2 pt-2">
               <button
                 onClick={() => {
                   setShowModal(false);
                   setEditingId(null);
-                  setFormData({ name: '', description: '', environment: 'dev' });
                 }}
-                className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-slate-700 hover:bg-slate-600'
-                    : 'bg-slate-200 hover:bg-slate-300'
-                }`}
+                className={`flex-1 px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-300 hover:bg-slate-400'} transition`}
               >
                 Cancel
               </button>
               <button
                 onClick={editingId ? handleUpdate : handleCreate}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
               >
                 {editingId ? 'Update' : 'Create'}
               </button>
