@@ -17,7 +17,7 @@ export default function DataIngestion() {
   const [formData, setFormData] = useState({
     name: '',
     projectId: '',
-    dataSource: 'csv' as const,
+    dataSource: 'csv' as 'csv' | 'database' | 'api' | 'cloud' | 'desktop',
     sourceConfig: {},
   });
   const [selectedProjectCodeId, setSelectedProjectCodeId] = useState<string | null>(null);
